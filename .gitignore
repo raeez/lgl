@@ -4,5 +4,9 @@ dist
 *.hi
 *.chi
 *.chs.h
+*.csv
+*.html
 
 bench/rand
+bench/dense
+bench/sparse
