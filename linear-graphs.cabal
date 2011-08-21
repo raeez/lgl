@@ -1,0 +1,55 @@
+name:                 linear-graphs
+version:              0.0.0.1
+license:              BSD3
+license-file:         LICENSE
+author:               Raeez Lorgat
+maintainer:           libraries@haskell.org
+bug-reports:          LINK_TO_TRAC
+synopsis:             Space-time efficient linear graph algorithms
+category:             Algorithms
+description:
+        This package contains efficient implementations of various generic
+        graph traversals, including breadth- and depth- first search, computation
+        of strongly connected components,  bi-connected components and edge
+        classification. Each operation is implemented as a state-transformer
+        ensuring linear time space and runtime (bounded within the size of the
+        graph).
+build-type:           Simple
+cabal-version:        >=1.6
+
+flag use-map
+  default: False
+  description: Use IntMap as the non-destructive update underlying data store for graph traversals.
+
+flag use-uvector
+  default: False
+  description: Use Unboxed Vector as the unboxed underlying data store for graph traversals.
+
+Library
+    build-depends: base, array, containers
+
+    extensions: RankNTypes
+
+    exposed-modules:
+      Data.Graph.Linear
+      Data.Graph.ContainersGraph
+      Data.Graph.GHCGraph
+
+    extensions: CPP
+
+    ghc-options: -O2 -Wall
+
+    -- if flag(use-map)
+      -- other-modules: Data.Graph.Linear.Map
+      -- cpp-options: -DUSE_MAP
+
+    -- else
+      -- if flag(use-uvector)
+        -- other-modules: Data.Graph.Linear.UnboxedVector
+        -- cpp-options: -DUSE_UVECTOR
+      -- else
+        -- other-modules: Data.Graph.Linear.Array
+
+source-repository head
+    type:     git
+    location: http://github.com/raeez/linear-graphs/
