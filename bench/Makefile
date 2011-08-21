@@ -1,11 +1,11 @@
 out.html: out.csv
 	criterion-to-html dense.csv
 
-out.csv: dense
-	./dense -u dense.csv
+out.csv: run
+	./run -u run.csv
 
-dense: Dense.hs Util.hs
-	ghc -O2 --make dense.hs
+run: Util.hs Dense.hs Main.hs
+	ghc -O2 --make Main.hs -o run
 
 .PHONY: clean
 clean:
@@ -13,4 +13,4 @@ clean:
 	rm *.hi
 	rm *.html
 	rm *.csv
-	rm dense
+	rm run
