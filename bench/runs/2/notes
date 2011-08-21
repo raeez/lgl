@@ -1,0 +1,4 @@
+-- containers:
+  remove ST check
+  linnear time concat -> constant time append
+  all creating graph from edged vertices

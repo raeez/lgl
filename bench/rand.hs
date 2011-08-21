@@ -12,25 +12,22 @@ genVertices n = zip ['A'..] [1..n]
 genMaximallyConnectedEdges :: [(Char, Int)] -> [G.Node Int Char]
 genMaximallyConnectedEdges vs = map (\(node, key) -> (node, key, map snd vs)) vs
 
-genDenseGraph :: Int -> ([G.Node Int Char], G.Graph (G.Node Int Char))
-genDenseGraph n = (inC, inG)
-  where
-    inC = genMaximallyConnectedEdges $ genVertices n
-    inG = G.graphFromEdgedVertices inC
-    -- ^ we generate the appropritae graph type for the various interfaces
+genDenseGraph :: Int -> [G.Node Int Char]
+genDenseGraph n = genMaximallyConnectedEdges $ genVertices n
+                  -- ^ we generate the appropriate graph type for the various interfaces
 
 benchSuite :: Int -> [Benchmark]
 benchSuite n =
-    [ bench ("Digraph [" ++ show n ++ "]")    $ nf G.stronglyConnCompG inputGraphG
-    , bench ("Containers [" ++ show n ++ "]") $ nf C.stronglyConnComp  inputGraphC
-    , bench ("Graph.SCC [" ++ show n ++ "]")  $ nf S.stronglyConnComp  inputGraphC
+    [ bench ("Digraph [" ++ show n ++ "]")    $ nf G.stronglyConnCompFromEdgedVertices inputGraph
+    , bench ("Containers [" ++ show n ++ "]") $ nf C.stronglyConnComp  inputGraph
+    , bench ("Graph.SCC [" ++ show n ++ "]")  $ nf S.stronglyConnComp  inputGraph
     ]
   where
-    (inputGraphC, inputGraphG) = genDenseGraph n
+    inputGraph = genDenseGraph n
 
 main :: IO ()
 main = defaultMain [
-    bgroup "stronglyConnectedComponents" $ concatMap benchSuite [10, 100, 1000, 2000]
+    bgroup "stronglyConnectedComponents" $ concatMap benchSuite [10, 100, 500]
     ]
 
 -----------------------------------------------------
