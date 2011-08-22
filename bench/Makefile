@@ -4,7 +4,7 @@ bm.html: bm.csv
 bm.csv: run
 	./run -u bm.csv
 
-run: Util.hs Dense.hs Main.hs
+run: Util.hs Dense.hs Random.hs Sparse.hs Main.hs
 	ghc -O2 --make Main.hs -o run
 
 .PHONY: clean

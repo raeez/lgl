@@ -5,9 +5,9 @@
 \begin{code}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Frozen.Digraph(
-        Graph, graphFromVerticesAndAdjacency, graphFromEdgedVertices,
+        Graph(..), graphFromVerticesAndAdjacency, graphFromEdgedVertices,
 
-        SCC(..), Node, flattenSCC, flattenSCCs,
+        Tree(..), SCC(..), Node, flattenSCC, flattenSCCs,
         stronglyConnCompG, topologicalSortG, 
         verticesG, edgesG, hasVertexG,
         reachableG, transposeG,
