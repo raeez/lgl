@@ -23,4 +23,4 @@ genSparseGraph :: EdgeConstructor
 genSparseGraph = \n -> genSparseEdges $ genVertices n
 
 sparseSuite :: [([Benchmark], [Benchmark])]
-sparseSuite = map (benchSuite "sparse" genSparseGraph) [1000, 5000, 10000, 20000]
+sparseSuite = map (benchSuite "sparse" genSparseGraph) [1000, 5000, 10000, 20000, 50000, 100000]
