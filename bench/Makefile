@@ -1,8 +1,8 @@
-out.html: out.csv
-	criterion-to-html dense.csv
+bm.html: bm.csv
+	criterion-to-html bm.csv
 
-out.csv: run
-	./run -u run.csv
+bm.csv: run
+	./run -u bm.csv
 
 run: Util.hs Dense.hs Main.hs
 	ghc -O2 --make Main.hs -o run
@@ -14,3 +14,7 @@ clean:
 	rm *.html
 	rm *.csv
 	rm run
+
+.PHONY: pull
+pull:
+	cabal install criterion criterion-to-html

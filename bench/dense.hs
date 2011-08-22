@@ -12,4 +12,4 @@ genDenseGraph :: EdgeConstructor
 genDenseGraph n = genMaximallyConnectedEdges $ genVertices n
 
 denseSuite :: [Benchmark]
-denseSuite = concatMap (sccBenchSuite "dense" genDenseGraph) [10, 50, 100, 500]
+denseSuite = concatMap (sccBenchSuite "dense" genDenseGraph) [10, 50, 100]
