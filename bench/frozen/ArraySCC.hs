@@ -54,7 +54,7 @@ data S = S { stack    :: ![Vertex]          -- ^ Traversal stack
 roots :: Func s ([Vertex] -> ST s S)
 roots g ixes lows st (v:vs) =
   do i <- readArray ixes v
-     if i == 0 then do s1 <- from_root g ixes lows st v
+     if i == 0 then do s1 <- from_root g ixes lows st v -- node not visited
                        roots g ixes lows s1 vs
                else roots g ixes lows st vs
 roots _ _ _ s [] = return s
@@ -97,5 +97,3 @@ check_adj g ixes lows st v (v':vs) =
                 check_adj g ixes lows st v vs
          | otherwise -> check_adj g ixes lows st v vs
 check_adj _ _ _ st _ [] = return st
-
-

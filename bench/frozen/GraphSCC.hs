@@ -76,5 +76,3 @@ to_scc :: Graph -> (Vertex -> Int) -> (Int,[Vertex]) -> SCC Vertex
 to_scc g lkp (n,[v]) = if n `elem` map lkp (g ! v) then CyclicSCC [v]
                                                    else AcyclicSCC v
 to_scc _ _ (_,vs)    = CyclicSCC vs
-
-

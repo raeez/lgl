@@ -18,15 +18,12 @@
 -----------------------------------------------------------------------------
 --
 module Data.Graph.Linear
-( G.stronglyConnCompFromEdgedVertices
-, C.stronglyConnComp
+( stronglyConnComp
+, SCC(..)
+, graphFromEdges'
 )
 where
 
 -- import Data.Graph.Linear.Basic
--- import Data.Graph.Linear.SCC
+import Data.Graph.Linear.SCC
 -- import Data.Graph.Linear.BCC
---
-
-import qualified Data.Graph.GHCGraph as G
-import qualified Data.Graph.ContainersGraph as C

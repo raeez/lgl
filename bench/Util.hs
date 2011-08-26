@@ -5,6 +5,7 @@ import Frozen.ContainersGraph (SCC(..))
 import qualified Frozen.Digraph as G
 import qualified Frozen.ContainersGraph as C
 import qualified Frozen.GraphSCC as S
+import qualified Data.Graph.Linear as L
 
 -- | Common types made synonyms for readability.
 type Vertices         = [(Char, Int)]
@@ -28,9 +29,10 @@ benchSuite :: String -> EdgeConstructor -> Size -> ([Benchmark], [Benchmark])
 benchSuite name graphType n = (sccSuite, bccSuite)
   where
     sccSuite = 
-      [ bench ("Digraph "    ++ header) $ nf G.stronglyConnCompFromEdgedVertices inputGraph
-      , bench ("Containers " ++ header) $ nf C.stronglyConnComp inputGraph
-      , bench ("Graph.SCC "  ++ header) $ nf S.stronglyConnComp inputGraph
+      [ bench ("Digraph "           ++ header) $ nf G.stronglyConnCompFromEdgedVertices inputGraph
+      , bench ("Containers "        ++ header) $ nf C.stronglyConnComp inputGraph
+      , bench ("Graph.SCC "         ++ header) $ nf S.stronglyConnComp inputGraph
+      , bench ("Data.Graph.Linear " ++ header) $ nf L.stronglyConnComp inputGraph
       ]
     bccSuite =
       [ bench ("Digraph "    ++ header) $ nf (\g -> let g' = G.graphFromEdgedVertices g
@@ -47,7 +49,7 @@ benchSuite name graphType n = (sccSuite, bccSuite)
 -- instances for forcing head normal form evaluation
 instance NFData v => NFData (G.SCC v) where
     rnf (G.AcyclicSCC v) = rnf v
-    rnf (G.CyclicSCC v) = rnf v
+    rnf (G.CyclicSCC v)  = rnf v
 
 instance NFData v => NFData (C.SCC v) where
     rnf (C.AcyclicSCC v) = rnf v
@@ -55,3 +57,7 @@ instance NFData v => NFData (C.SCC v) where
 
 instance NFData v => NFData (G.Tree v) where
     rnf (G.Node v ts) = seq (rnf v) (seq (rnf ts) ())
+
+instance NFData v => NFData(L.SCC v) where
+    rnf (L.AcyclicSCC v) = rnf v
+    rnf (L.CyclicSCC v)  = rnf v
