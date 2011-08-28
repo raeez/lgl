@@ -1,9 +1,7 @@
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Graph.Linear.Basic
--- Copyright   :  (c) The University of Glasgow 2002
---                (c) The University of Glasgow 2006
---                (c) Raeez Lorgat 2011
+-- Copyright   :  
 -- License     :  BSD-style (see the file libraries/base/LICENSE)
 -- 
 -- Maintainer  :  libraries@haskell.org
@@ -18,50 +16,19 @@
 --
 module Data.Graph.Linear.Basic
 (
-  Graph, mkGraphFromVerticesAndAdjacency, mkGraphFromEdgedVertices,
-
-  dfs, dfsWith, dff, dffWith,
-
+  vertices, edges
 )
 where
 
-import Data.Graph.Linear.Representation.Array
+import Data.Graph.Linear.Graph
+-- import Data.Graph.Linear.Representation.Array
 -- import Data.Graph.Linear.Representation.Vector
 -- import Data.Graph.Linear.Representation.HashMap
 -- import Data.Graph.Linear.Representation.Map
 
 -------------------------------------------------------------------------------
--- Graph datatypes
-
-type Vertex  = Int
-type Table a = Array Vertex a
-type IntGraph   = Table [Vertex]
-type Bounds  = (Vertex, Vertex)
-type IntEdge    = (Vertex, Vertex)
-
-data Graph vertex node = Graph
-  { grRepr      :: GraphRepresentation vertex node
-  , grVertexMap :: vertex -> node
-  , grNodeMap   :: node   -> Maybe vertex
-  }
-
-type Node key payload = (payload, key, [key])
-
--------------------------------------------------------------------------------
--- Graph Constructors
+-- Basic traversals/projections
 --
---
-
-
--------------------------------------------------------------------------------
--- Basic Algorithms
---
-vertices :: IntGraph -> [Vertex]
-vertices  = indices
-
-edges    :: IntGraph -> [IntEdge]
-edges g   = [ (v, w) | v <- vertices g, w <- g!v ]
-
 mapT    :: (Vertex -> a -> b) -> Table a -> Table b
 mapT f t = array (bounds t) [ (v, f v (t ! v)) | v <- indices t ]
 
