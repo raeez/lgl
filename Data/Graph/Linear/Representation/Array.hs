@@ -1,4 +1,3 @@
-{-# LANGUAGE ExplicitForAll#-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Graph.Linear.Representation.Array
@@ -9,8 +8,8 @@
 -- Stability   :  experimental
 -- Portability :  portable
 --
--- Data.Graph.Linear.Representation.Array implements the underlying adjacency
--- represenation as a mutable array, as well as a common interface for storing data
+-- Data.Graph.Linear.Representation.Array implements the underlying graph adjacency
+-- information as a mutable array, as well as a common interface for storing data
 -- in this form in the ST monad.
 --
 -----------------------------------------------------------------------------
@@ -27,7 +26,6 @@ module Data.Graph.Linear.Representation.Array
 where
 import Data.Array
 import Data.Array.ST
--- import Data.Graph.Linear.Representation(LinearMap)
 
 type Mapping a b      = Array a b
 type STMapping s a b  = STUArray s a b

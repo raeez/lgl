@@ -20,7 +20,7 @@
 module Data.Graph.Linear where
 
 import Data.Graph.Linear.Graph
-import Data.Graph.Linear.Basic
-import Data.Graph.Linear.Query.DFS
+-- import Data.Graph.Linear.Basic
+-- import Data.Graph.Linear.Query.DFS
 import Data.Graph.Linear.Query.BCC
 import Data.Graph.Linear.Query.SCC

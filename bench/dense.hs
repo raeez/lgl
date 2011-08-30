@@ -9,4 +9,4 @@ genDenseGraph :: EdgeConstructor
 genDenseGraph = \n -> genMaximallyConnectedEdges $ genVertices n
 
 denseSuite :: [([Benchmark], [Benchmark])]
-denseSuite = map (benchSuite "dense" genDenseGraph) [10, 50, 100, 500, 1000, 1500]
+denseSuite = map (benchSuite "dense" genDenseGraph) [10, 50, 100, 500, 1000, 1500 , 2000, 2500]

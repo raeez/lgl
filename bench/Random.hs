@@ -24,4 +24,4 @@ genRandomGraph :: EdgeConstructor
 genRandomGraph = \n -> genRandomEdges generator $ genVertices n
 
 randomSuite :: [([Benchmark], [Benchmark])]
-randomSuite = map (benchSuite "random" genRandomGraph) [10, 50, 100, 300, 500, 1000, 5000, 10000, 50000, 100000] -- , 150000, 200000]
+randomSuite = map (benchSuite "random" genRandomGraph) [10, 50, 100, 300, 500, 1000, 5000, 10000, 50000, 100000, 150000, 200000]

@@ -5,7 +5,7 @@ import Util
 
 -- | filters the sublist formed by taking every n'th element, after some shift s
 shiftedCycle :: Int -> Int -> [a] -> [a]
-shiftedCycle s 0 xs = shiftedCycle s 1 xs
+shiftedCycle s 0 xs = []
 shiftedCycle s n xs = map snd $ filter selectShiftedInterval $ zip [1..] xs
   where
     selectShiftedInterval = \(i, x) -> (i + s) `mod` n == 0
@@ -17,10 +17,10 @@ genSparseEdges vs =
                  ([], cycle)
                  vs
   where
-    cycle = [1..length vs] ++ cycle
+    cycle = [0..length vs] ++ cycle
 
 genSparseGraph :: EdgeConstructor
 genSparseGraph = \n -> genSparseEdges $ genVertices n
 
 sparseSuite :: [([Benchmark], [Benchmark])]
-sparseSuite = map (benchSuite "sparse" genSparseGraph) [1000, 5000, 10000, 20000, 35000, 50000, 80000, 100000] -- , 125000, 150000, 175000, 200000]
+sparseSuite = map (benchSuite "sparse" genSparseGraph) [1000, 5000, 10000, 20000 , 35000, 50000, 80000, 100000] -- , 125000, 150000, 175000, 200000]

@@ -32,7 +32,11 @@ Library
 
     exposed-modules:
       Data.Graph.Linear
-      Data.Graph.Linear.SCC
+      Data.Graph.Linear.Graph
+      Data.Graph.Linear.Query.BCC
+      Data.Graph.Linear.Query.SCC
+      Data.Graph.Linear.Query.Util
+      Data.Graph.Linear.Representation.Array
 
     extensions: CPP
 

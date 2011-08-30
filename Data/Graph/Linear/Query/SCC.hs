@@ -1,11 +1,8 @@
-{-# LANGUAGE FlexibleContexts #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Graph.Linear.Query.SCC
--- Copyright   :  (c) The University of Glasgow 2002
---                (c) The University of Glasgow 2006
---                (c) Raeez Lorgat 2011
--- License     :  BSD-style (see the file libraries/base/LICENSE)
+-- Copyright   :  
+-- License     :  BSD-style (see the file LICENSE)
 -- 
 -- Maintainer  :  libraries@haskell.org
 -- Stability   :  experimental
@@ -18,32 +15,23 @@
 --
 module Data.Graph.Linear.Query.SCC
   ( SCC(..)
-  , stronglyConnComp
-  -- , stronglyConnCompR
+  , stronglyConnComp, stronglyConnCompN
   , scc
   )
 where
 
-import Debug.Trace
 import Data.Graph.Linear.Graph
 import Data.Graph.Linear.Representation.Array
+import Data.Graph.Linear.Query.Util
 import Data.List(nub, foldl')
 import Data.STRef
 import Control.Monad(forM_, ap)
 import Control.Monad.ST
 import Control.Applicative
 
--------------------------------------------------------------------------
---									-
---	External interface
---									-
--------------------------------------------------------------------------
---
 -- | Strongly connected component.
-data SCC vertex = AcyclicSCC vertex	-- ^ A single vertex that is not
-					-- in any cycle.
-	        | CyclicSCC  [vertex]	-- ^ A maximal set of mutually
-					-- reachable vertices.
+data SCC vertex = AcyclicSCC vertex   -- ^ A single vertex that is not in any cycle.
+                | CyclicSCC  [vertex] -- ^ A maximal set of mutually reachable vertices.
 
 instance Functor SCC where
     fmap f (AcyclicSCC v) = AcyclicSCC (f v)
@@ -62,41 +50,20 @@ type Marks s    = STMapping s Vertex Int
 type Lowlinks s = STMapping s Vertex Int
 
 data TarjanState = TS
-  {  stack :: {-# UNPACK #-} ![Vertex] -- ^ Traversal stack
-  ,  nextN :: {-# UNPACK #-} !Int      -- ^ Next node number
-  ,  sccs  :: {-# UNPACK #-} !SCCList  -- ^ Completed scc list
-  ,  nextC :: {-# UNPACK #-} !Int      -- ^ Next SCC number
+  { nextN :: {-# UNPACK #-} !Int      -- ^ Next node number
+  , nextC :: {-# UNPACK #-} !Int      -- ^ next SCC number
+  , stack :: ![Vertex]                -- ^ Traversal Stack
+  , sccs  :: !SCCList  -- ^ Completed scc list
   }
-
-ifM :: Monad m => m Bool -> m a -> m a -> m a
-ifM p tb fb = p >>= \pred -> if pred then tb else fb
-
-whenM :: Monad m => m Bool -> m a -> m ()
-whenM p tb = p >>= \pred -> if pred then tb >> return () else return ()
-
-isEqM      :: (Applicative m, Monad m, Eq a) => m a -> m a -> m Bool
-isEqM      = predM (==)
-
-lessThanM  :: (Applicative m, Monad m, Ord a) => m a -> m a -> m Bool
-lessThanM  = predM (<)
-
-greaterThanM  :: (Applicative m, Monad m, Ord a) => m a -> m a -> m Bool
-greaterThanM  = predM (>)
-
-andM      ::  (Applicative m, Monad m) => m Bool -> m Bool -> m Bool
-andM       = predM (&&)
-
-predM ::  (Applicative m, Monad m) => (a -> a -> Bool) -> m a -> m a -> m Bool
-predM p v1 v2 = p <$> v1 <*> v2
 
 scc :: GraphRepresentation node => Graph node -> (SCCList, SCCMap)
 scc g = runST (
   do marks    <- newSTMap (bounds g) 0
      lowlinks <- newSTMap (bounds g) 0
-     st       <- newSTRef $ TS [] 1 [] 1
+     st       <- newSTRef $ TS 1 1 [] []
      
      forM_ (vertices g) $ \w ->
-        whenM (readSTMap marks w `isEqM` return 0) -- unvisited
+        whenM (unvisited marks w) -- unvisited
             $ strongConnect g marks lowlinks st w
 
      final <- readSTRef st
@@ -107,8 +74,8 @@ scc g = runST (
 {-# INLINE strongConnect #-}
 strongConnect :: GraphRepresentation node
               => Graph node                -- original graph
-               -> Marks s              -- state of node (visited/unvisited)
-               -> Lowlinks s
+               -> STMapping s Vertex Int   -- state of node (visited/unvisited)
+               -> STMapping s Vertex Int
                -> STRef s TarjanState
                -> Vertex
                -> ST s ()
@@ -123,17 +90,17 @@ strongConnect g marks lowlinks st v =
      writeSTRef st s'
 
      forM_ (g `adjacentTo` v) $ \w ->
-        ifM (readSTMap marks w `isEqM` return 0)
+        ifM (unvisited marks w)
             (do strongConnect g marks lowlinks st w
                 newLowLink <- min <$> readSTMap lowlinks v <*> readSTMap lowlinks w
                 writeSTMap lowlinks v newLowLink)
             -- else
-            (whenM ((readSTMap marks w `greaterThanM` readSTMap marks v) `andM`   -- back edge
-                     ((readSTMap marks w) `lessThanM` return 0))                  -- w on stack
+            (whenM ((readSTMap marks w .>. readSTMap marks v) .&&.   -- back edge
+                     ((readSTMap marks w) .<. return 0))                  -- w on stack
                 $ do ll' <- min <$> readSTMap lowlinks v <*> (negate <$> readSTMap marks w)
                      writeSTMap lowlinks v ll')
 
-     whenM (readSTMap lowlinks v `isEqM` readSTMap marks v)
+     whenM (readSTMap lowlinks v .==. readSTMap marks v)
          $ do s <- readSTRef st
               let nextComponentID = nextC s
                   (newSCC, newStack) = span (>= v) (stack s)
@@ -146,73 +113,30 @@ strongConnect g marks lowlinks st v =
 
               writeSTRef st s'
 
---------------------------------------------------------------------------------
--- | Compute the list of strongly connected components of a graph.
--- The components are topologically sorted:
--- if v1 in C1 points to v2 in C2, then C2 will come before C1 in the list.
-sccList :: GraphRepresentation node => Graph node -> [SCC Vertex]
-sccList g = reverse $ map (to_scc g lkp) cs
-  where (cs,lkp) = scc g
 
--- | Compute the list of strongly connected components of a graph.
--- Each component contains the adjecency information from the original graph.
--- The components are topologically sorted:
--- if v1 in C1 points to v2 in C2, then C2 will come before C1 in the list.
-sccListR :: GraphRepresentation node => Graph node -> [SCC (Vertex,[Vertex])]
-sccListR g = reverse $ map cvt cs
-  where (cs,lkp) = scc g
-        cvt (n,[v]) = let adj = g `adjacentTo` v
-                      in if  n `elem` map lkp adj
-                           then CyclicSCC [(v,adj)]
-                           else AcyclicSCC (v,adj)
-        cvt (_,vs)  = CyclicSCC [ (v, g `adjacentTo` v) | v <- vs ]
-
--- | Quotient a graph with the relation that relates vertices that
--- belong to the same SCC.  The vertices in the new graph are the
--- SCCs of the old graph, and there is an edge between two components,
--- if there is an edge between any of their vertices.
--- The entries in the resulting list are in reversed-topologically sorted:
--- if v1 in C1 points to v2 in C2, then C1 will come before C2 in the list.
-sccGraph :: GraphRepresentation node => Graph node -> [(SCC Int, Int, [Int])]
-sccGraph g = map to_node cs
-  where (cs,lkp) = scc g
-        to_node x@(n,this) = ( to_scc g lkp x
-                             , n
-                             , nub $ concatMap (map lkp . (g `adjacentTo`)) this
-                             )
-
-stronglyConnComp :: (GraphRepresentation (Node payload label),  Ord label) => [(payload, label, [label])] -> [SCC payload]
+stronglyConnComp :: Ord label
+                  => [(payload, label, [label])]
+                  -> [SCC payload]
 stronglyConnComp es = reverse $ map cvt cs
-  where (g,back)    = (\x -> (mkGraph x , mkBack x)) $ map (\(p, l, ls) -> Node p l ls) es
+  where g           = mkGraph $ map (\(p, l, ls) -> Node p l ls) es
         (cs,lkp)    = scc g
-        cvt (n,[v]) = let Node payload _ _ = back v
+        cvt (n,[v]) = let Node payload _ _ = grVertexMap g v
                       in if n `elem` map lkp (g `adjacentTo` v)
-                            then CyclicSCC [payload]
-                            else AcyclicSCC payload
-        cvt (_,vs)  = CyclicSCC [ payload | Node payload _ _ <- map back vs ]
-
-{-
-stronglyConnCompR :: (GraphRepresentation (Node payload label), Ord label) => [(payload, label, [label])] -> [SCC (payload, label, [label])]
-stronglyConnCompR es = reverse $ map cvt cs
-  where (g,back)    = mkGraph $ map (\(p, l, ls) -> Node p l ls) es
-        (cs,lkp)    = scc g
-        cvt (n,[v]) = if n `elem` map lkp (g ! v)
-                         then CyclicSCC [back v]
-                         else AcyclicSCC (back v)
-        cvt (_,vs)  = CyclicSCC (map back vs)
-        -}
-
-to_scc :: GraphRepresentation node => Graph node -> (Vertex -> Int) -> (Int,[Vertex]) -> SCC Vertex
-to_scc g lkp (n,[v]) = if n `elem` map lkp (g `adjacentTo` v) then CyclicSCC [v]
-                                                              else AcyclicSCC v
-to_scc _ _ (_,vs)    = CyclicSCC vs
-
-instance Applicative (ST s) where
-  pure  = return
-  (<*>) = ap
+                          then CyclicSCC [payload]
+                          else AcyclicSCC payload
+        cvt (_,vs)  = CyclicSCC [ payload | Node payload _ _ <- map (grVertexMap g) vs ]
 
 
-
+stronglyConnCompN :: Ord label
+                  => [(payload, label, [label])]
+                  -> [SCC (Node payload label)]
+stronglyConnCompN es = reverse $ map cvt cs
+  where g            = mkGraph $ map nodeConstructor es
+        (cs,lkp)     = scc g
+        cvt (n,[v])  = if n `elem` map lkp (g `adjacentTo` v)
+                         then CyclicSCC [grVertexMap g v]
+                         else AcyclicSCC (grVertexMap g v)
+        cvt (_,vs)   = CyclicSCC (map (grVertexMap g) vs)
 
 -----------------------------------------------------------------------------
 {-
@@ -264,4 +188,52 @@ findCycle graph
 
     new_work :: [key] -> [payload] -> [WorkItem key payload]
     new_work deps path = [ (n, path) | Just n <- map (`Map.lookup` env) deps ]
+-}
+
+{-
+--------------------------------------------------------------------------------
+-- | Compute the list of strongly connected components of a graph.
+-- The components are topologically sorted:
+-- if v1 in C1 points to v2 in C2, then C2 will come before C1 in the list.
+sccList :: GraphRepresentation node => Graph node -> [SCC Vertex]
+sccList g = reverse $ map (to_scc g lkp) cs
+  where (cs,lkp) = scc g
+
+-- | Compute the list of strongly connected components of a graph.
+-- Each component contains the adjecency information from the original graph.
+-- The components are topologically sorted:
+-- if v1 in C1 points to v2 in C2, then C2 will come before C1 in the list.
+sccListR :: GraphRepresentation node => Graph node -> [SCC (Vertex,[Vertex])]
+sccListR g = reverse $ map cvt cs
+  where (cs,lkp) = scc g
+        cvt (n,[v]) = let adj = g `adjacentTo` v
+                      in if  n `elem` map lkp adj
+                           then CyclicSCC [(v,adj)]
+                           else AcyclicSCC (v,adj)
+        cvt (_,vs)  = CyclicSCC [ (v, g `adjacentTo` v) | v <- vs ]
+
+-- | Quotient a graph with the relation that relates vertices that
+-- belong to the same SCC.  The vertices in the new graph are the
+-- SCCs of the old graph, and there is an edge between two components,
+-- if there is an edge between any of their vertices.
+-- The entries in the resulting list are in reversed-topologically sorted:
+-- if v1 in C1 points to v2 in C2, then C1 will come before C2 in the list.
+sccGraph :: GraphRepresentation node
+          => Graph node
+          -> [(SCC Int, Int, [Int])]
+sccGraph g = map to_node cs
+  where (cs,lkp) = scc g
+        to_node x@(n,this) = ( to_scc g lkp x
+                             , n
+                             , nub $ concatMap (map lkp . (g `adjacentTo`)) this
+                             )
+
+to_scc :: GraphRepresentation node
+        => Graph node
+        -> (Vertex -> Int)
+        -> (Int,[Vertex])
+        -> SCC Vertex
+to_scc g lkp (n,[v]) = if n `elem` map lkp (g `adjacentTo` v) then CyclicSCC [v]
+                                                              else AcyclicSCC v
+to_scc _ _ (_,vs)    = CyclicSCC vs
 -}
