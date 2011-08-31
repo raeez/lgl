@@ -1,3 +1,4 @@
+{-# LANGAGE NoMonomorphismRestriction #-}
 -----------------------------------------------------------------------------
 -- |
 -- Module      :  Data.Graph.Linear.Representation.Array
@@ -16,40 +17,68 @@
 --
 module Data.Graph.Linear.Representation.Array
 (
-    Mapping, STMapping
-  , mkMap, newSTMap, readSTMap, writeSTMap
+    Bounds
+  , Mapping, STMapping
+  , fromList, newSTMap, readSTMap, writeSTMap
   , empty, isEmpty
   , domain, domainBounds
   , (!)
   , unsafeFreeze
 )
 where
-import Data.Array
-import Data.Array.ST
+-- import qualified Data.Array.Unboxed as A
+import qualified Data.Array as A
+import qualified Data.Array.IArray as IA
+import qualified Data.Array.ST as MA
 
-type Mapping a b      = Array a b
-type STMapping s a b  = STUArray s a b
+-- |Represents the upper and lower bounds of the domain of a given Mapping.
+type Bounds = (Int, Int)
 
-mkMap :: Ix i => (i, i) -> [(i, e)] -> Mapping i e
-mkMap = array
+-- |Represents a structure mapping integer indices to values of type 'a'. Uses
+-- boxed arrays.
+type Mapping e =  A.Array Int e
 
-newSTMap :: (MArray a e m, Ix i) => (i, i) -> e -> m (a i e)
-newSTMap = newArray
+-- |Given a state type 's', STMapping s a represents an array mapping integer
+-- indices to values of type 'a' within the ST monad. Uses unboxed arrays.
+type STMapping s e = MA.STArray s Int e
 
-readSTMap :: (MArray a e m, Ix i) => a i e -> i -> m e
-readSTMap = readArray
+-- |Construct a Mapping from a given list of elements
+fromList :: [(Int, e)] -> Mapping e
+fromList items = let bnds = (0, length items - 1) in A.array bnds items
 
-writeSTMap :: (MArray a e m, Ix i) => a i e -> i -> e -> m ()
-writeSTMap = writeArray
+-- |The empty Mapping
+empty :: Mapping e
+empty = A.array (1,0) []
 
-empty :: Mapping Int b
-empty = array (1,0) []
+-- |Test for the empty Mapping.
+isEmpty :: Mapping e -> Bool
+isEmpty m = let (a, b) = A.bounds m in a > b
 
-isEmpty :: Mapping Int b -> Bool
-isEmpty m = let (a, b) = bounds m
-            in a > b
-domain :: Ix i => Mapping i e -> [i]
-domain = indices
+-- |List representing the domain of the Mapping.
+domain :: Mapping e -> [Int] 
+domain = A.indices
 
-domainBounds :: Ix i =>  Array i e -> (i, i)
-domainBounds = bounds
+-- |The upper and lower bounds of the domain of the Mapping.
+domainBounds :: Mapping e -> Bounds
+domainBounds = A.bounds
+
+-- |O(1) element indexing without bounds checking.
+(!) :: Mapping a -> Int -> a
+(!) m i = (A.!) m i
+
+-- |Builds a new STMapping, with every element initialised to the supplied value.
+newSTMap :: MA.MArray a e m =>  Bounds-> e -> m (a Int e)
+newSTMap = MA.newArray
+
+-- |Read an element from an existing STMapping.
+readSTMap :: MA.MArray a e m => a Int e -> Int -> m e
+readSTMap = MA.readArray
+
+-- |Write an element to an existing STMapping.
+writeSTMap :: MA.MArray a e m => a Int e -> Int -> e -> m ()
+writeSTMap = MA.writeArray
+
+-- |O(1) Unsafe convert a Mapping to an immutable one without copying.
+-- The mapping may not be used after this operation.
+unsafeFreeze :: (MA.MArray a e m, IA.IArray b e) => a Int e -> m (b Int e)
+unsafeFreeze = MA.unsafeFreeze

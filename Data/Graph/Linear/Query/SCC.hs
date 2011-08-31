@@ -46,8 +46,6 @@ flattenSCC (CyclicSCC vs) = vs
 
 type SCCList    = [(Int, [Vertex])]
 type SCCMap     = Vertex -> Int
-type Marks s    = STMapping s Vertex Int
-type Lowlinks s = STMapping s Vertex Int
 
 data TarjanState = TS
   { nextN :: {-# UNPACK #-} !Int      -- ^ Next node number
@@ -74,8 +72,8 @@ scc g = runST (
 {-# INLINE strongConnect #-}
 strongConnect :: GraphRepresentation node
               => Graph node                -- original graph
-               -> STMapping s Vertex Int   -- state of node (visited/unvisited)
-               -> STMapping s Vertex Int
+               -> STMapping s Int   -- state of node (visited/unvisited)
+               -> STMapping s Int
                -> STRef s TarjanState
                -> Vertex
                -> ST s ()

@@ -7,7 +7,7 @@ import Control.Monad.ST
 import Data.Graph.Linear.Graph
 import Data.Graph.Linear.Representation.Array
 
-unvisited :: STMapping s Vertex Int -> Vertex -> ST s Bool
+unvisited :: STMapping s Int -> Vertex -> ST s Bool
 unvisited marks w = readSTMap marks w .==. return 0
 
 ifM :: Monad m => m Bool -> m a -> m a -> m a

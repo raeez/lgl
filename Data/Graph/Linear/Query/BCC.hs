@@ -31,9 +31,16 @@ import Control.Monad(forM_)
 import Control.Monad.ST
 import Control.Applicative
 
+-- |A list of biconnected components, structured as a tuple of
+-- (component id, component edge list)
 type BCCList      = [(Int, [Edge])]
+
+-- |A mapping from internal graph vertices to biconnected component id
 type BCCMap       = Vertex -> Int
 
+-- |External interface of a single biconnected component.
+-- includes the component identifier, edge list and a function to check node
+-- inclusion within this biconnected component
 data BCC node = BCC 
   { bccID       :: !Int
   , bccVertices :: [Edge] -- ^ List of edges in the component
@@ -72,8 +79,8 @@ bcc g = runST (
 {-# INLINE biConnect #-}
 biConnect :: GraphRepresentation node
             => Graph node
-            -> STMapping s Vertex Int
-            -> STMapping s Vertex Int
+            -> STMapping s Int
+            -> STMapping s Int
             -> STRef s TarjanState
             -> Vertex
             -> Vertex
@@ -122,11 +129,11 @@ biConnect g marks lowpoints st v u =
 
 
 {-# INLINE processStack #-}
-processStack :: STMapping s Vertex Int -> Vertex -> Vertex -> [Edge] -> ST s ([Edge], [Edge])
+processStack :: STMapping s Int -> Vertex -> Vertex -> [Edge] -> ST s ([Edge], [Edge])
 processStack marks v w stck = do (bcc', stck') <- buildBCC marks w [] stck
                                  return ((v, w):bcc', delete (v, w) stck')
 
-buildBCC :: STMapping s Vertex Int -> Vertex -> [Edge] -> [Edge] -> ST s ([Edge], [Edge])
+buildBCC :: STMapping s Int -> Vertex -> [Edge] -> [Edge] -> ST s ([Edge], [Edge])
 buildBCC marks w cs [] = return (cs, [])
 buildBCC marks w cs ((u1, u2):stck) =
   ifM (readSTMap marks u1 .>=. readSTMap marks w)
@@ -135,6 +142,8 @@ buildBCC marks w cs ((u1, u2):stck) =
       -- else
       (return (cs, (u1, u2):stck)) -- otherwise return the constructed component
 
+-- | Construct a graph from a list of edged vertices, and compute the biconnected
+-- components∙
 biConnectedComp :: Ord label
                   => [(payload, label, [label])]
                   -> [BCC (Node payload label)]

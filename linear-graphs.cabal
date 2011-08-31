@@ -2,7 +2,7 @@ name:                 linear-graphs
 version:              0.0.0.1
 license:              BSD3
 license-file:         LICENSE
-author:               Raeez Lorgat
+author:               
 maintainer:           libraries@haskell.org
 bug-reports:          LINK_TO_TRAC
 synopsis:             Space-time efficient linear graph algorithms
@@ -21,12 +21,12 @@ flag use-map
   default: False
   description: Use IntMap as the non-destructive update underlying data store for graph traversals.
 
-flag use-uvector
+flag use-vector
   default: False
   description: Use Unboxed Vector as the unboxed underlying data store for graph traversals.
 
 Library
-    build-depends: base, array, containers
+    build-depends: base, array, containers, vector, primitive
 
     extensions: RankNTypes
 
@@ -37,21 +37,20 @@ Library
       Data.Graph.Linear.Query.SCC
       Data.Graph.Linear.Query.Util
       Data.Graph.Linear.Representation.Array
+      Data.Graph.Linear.Representation.Vector
 
     extensions: CPP
 
     ghc-options: -O2 -Wall
 
-    -- if flag(use-map)
-      -- other-modules: Data.Graph.Linear.Map
-      -- cpp-options: -DUSE_MAP
-
-    -- else
-      -- if flag(use-uvector)
-        -- other-modules: Data.Graph.Linear.UnboxedVector
-        -- cpp-options: -DUSE_UVECTOR
-      -- else
-        -- other-modules: Data.Graph.Linear.Array
+    if flag(use-map)
+      other-modules: Data.Graph.Linear.Representation.Map
+      cpp-options: -DUSE_MAP
+    else
+      if flag(use-vector)
+        cpp-options: -DUSE_VECTOR
+      else
+        cpp-options: -DUSE_ARRAY
 
 source-repository head
     type:     git
