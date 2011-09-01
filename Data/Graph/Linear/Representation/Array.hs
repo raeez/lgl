@@ -19,10 +19,10 @@ module Data.Graph.Linear.Representation.Array
 (
     Bounds
   , Mapping, STMapping
-  , fromList, newSTMap, readSTMap, writeSTMap
+  , mkMap, newSTMap, readSTMap, writeSTMap
+  , (!)
   , empty, isEmpty
   , domain, domainBounds
-  , (!)
   , unsafeFreeze
 )
 where
@@ -43,8 +43,8 @@ type Mapping e =  A.Array Int e
 type STMapping s e = MA.STArray s Int e
 
 -- |Construct a Mapping from a given list of elements
-fromList :: [(Int, e)] -> Mapping e
-fromList items = let bnds = (0, length items - 1) in A.array bnds items
+mkMap :: Bounds -> [(Int, e)] -> Mapping e
+mkMap bnds items = A.array bnds items
 
 -- |The empty Mapping
 empty :: Mapping e
@@ -62,9 +62,10 @@ domain = A.indices
 domainBounds :: Mapping e -> Bounds
 domainBounds = A.bounds
 
--- |O(1) element indexing without bounds checking.
+-- |O(1) element indexing
 (!) :: Mapping a -> Int -> a
-(!) m i = (A.!) m i
+(!) = (A.!)
+{-# INLINE (!) #-}
 
 -- |Builds a new STMapping, with every element initialised to the supplied value.
 newSTMap :: MA.MArray a e m =>  Bounds-> e -> m (a Int e)
@@ -73,10 +74,12 @@ newSTMap = MA.newArray
 -- |Read an element from an existing STMapping.
 readSTMap :: MA.MArray a e m => a Int e -> Int -> m e
 readSTMap = MA.readArray
+{-# INLINE readSTMap #-}
 
 -- |Write an element to an existing STMapping.
 writeSTMap :: MA.MArray a e m => a Int e -> Int -> e -> m ()
 writeSTMap = MA.writeArray
+{-# INLINE writeSTMap #-}
 
 -- |O(1) Unsafe convert a Mapping to an immutable one without copying.
 -- The mapping may not be used after this operation.

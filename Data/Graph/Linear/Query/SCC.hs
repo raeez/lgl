@@ -29,7 +29,7 @@ import Control.Monad(forM_, ap)
 import Control.Monad.ST
 import Control.Applicative
 
--- | Strongly connected component.
+-- |Strongly connected component.
 data SCC vertex = AcyclicSCC vertex   -- ^ A single vertex that is not in any cycle.
                 | CyclicSCC  [vertex] -- ^ A maximal set of mutually reachable vertices.
 
@@ -37,16 +37,29 @@ instance Functor SCC where
     fmap f (AcyclicSCC v) = AcyclicSCC (f v)
     fmap f (CyclicSCC vs) = CyclicSCC (fmap f vs)
 
+instance Show s => Show (SCC s) where
+    show (AcyclicSCC v) = show v
+    show (CyclicSCC vs) = show vs
+
+-- |Convert a list of SCCs to its list representation.
 flattenSCCs :: [SCC a] -> [a]
 flattenSCCs = concatMap flattenSCC
 
+-- |Convert a single SCC to its list representation.
 flattenSCC :: SCC a -> [a]
 flattenSCC (AcyclicSCC v) = [v]
 flattenSCC (CyclicSCC vs) = vs
 
+-- |Output of Tarjan's strongly connected components algorithm; returns a list
+-- of tuples, indexed by (component id, list of vertices in component).
 type SCCList    = [(Int, [Vertex])]
+
+-- |Output of Tarjan's strongly connected components algorithm; returns a map from
+-- vertices to strongly connected component id's.
 type SCCMap     = Vertex -> Int
 
+-- |Structure holding the state threaded through the execution of Tarjan's
+-- strongly connected components algorithm.
 data TarjanState = TS
   { nextN :: {-# UNPACK #-} !Int      -- ^ Next node number
   , nextC :: {-# UNPACK #-} !Int      -- ^ next SCC number
@@ -54,34 +67,37 @@ data TarjanState = TS
   , sccs  :: !SCCList  -- ^ Completed scc list
   }
 
+-- |Run Tarjan's strongly connected components algorithm.
 scc :: GraphRepresentation node => Graph node -> (SCCList, SCCMap)
 scc g = runST (
   do marks    <- newSTMap (bounds g) 0
      lowlinks <- newSTMap (bounds g) 0
      st       <- newSTRef $ TS 1 1 [] []
-     
+
      forM_ (vertices g) $ \w ->
-        whenM (unvisited marks w) -- unvisited
+        whenM (unvisited marks w)
             $ strongConnect g marks lowlinks st w
 
      final <- readSTRef st
      sccMap <- unsafeFreeze marks
+
      return (sccs final, \i -> sccMap ! i)
   )
 
 {-# INLINE strongConnect #-}
+-- |Find the strongly connected components rooted at vertex v
 strongConnect :: GraphRepresentation node
               => Graph node                -- original graph
-               -> STMapping s Int   -- state of node (visited/unvisited)
-               -> STMapping s Int
+               -> STMapping s Int          -- state of vertex {0 = unvisited, -ve = on the stack, +ve = in a component)
+               -> STMapping s Int          -- vertex of node
                -> STRef s TarjanState
                -> Vertex
                -> ST s ()
 strongConnect g marks lowlinks st v =
   do s <- readSTRef st
      let n = nextN s
-     writeSTMap marks    v (negate n)
-     writeSTMap lowlinks v n
+     writeSTMap marks    v $ (negate n)
+     writeSTMap lowlinks v $ n
      let s' =  s { stack = v:stack s
                  , nextN = n + 1
                  }
@@ -98,7 +114,7 @@ strongConnect g marks lowlinks st v =
                 $ do ll' <- min <$> readSTMap lowlinks v <*> (negate <$> readSTMap marks w)
                      writeSTMap lowlinks v ll')
 
-     whenM (readSTMap lowlinks v .==. readSTMap marks v)
+     whenM (readSTMap lowlinks v .==. (negate <$> readSTMap marks v))
          $ do s <- readSTRef st
               let nextComponentID = nextC s
                   (newSCC, newStack) = span (>= v) (stack s)
@@ -111,7 +127,8 @@ strongConnect g marks lowlinks st v =
 
               writeSTRef st s'
 
-
+-- |Construct a graph from a list of tuples and compute the strongly connected
+-- components.
 stronglyConnComp :: Ord label
                   => [(payload, label, [label])]
                   -> [SCC payload]
@@ -125,6 +142,9 @@ stronglyConnComp es = reverse $ map cvt cs
         cvt (_,vs)  = CyclicSCC [ payload | Node payload _ _ <- map (grVertexMap g) vs ]
 
 
+-- |Wrapper function computing the strongly connected components present in the
+-- graph represented as a list of tuples. Same as stronglyConnComp, but retains
+-- full node information in the generated SCCs.
 stronglyConnCompN :: Ord label
                   => [(payload, label, [label])]
                   -> [SCC (Node payload label)]

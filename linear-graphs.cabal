@@ -43,14 +43,10 @@ Library
 
     ghc-options: -O2 -Wall
 
-    if flag(use-map)
-      other-modules: Data.Graph.Linear.Representation.Map
-      cpp-options: -DUSE_MAP
+    if flag(use-vector)
+      cpp-options: -DUSE_VECTOR
     else
-      if flag(use-vector)
-        cpp-options: -DUSE_VECTOR
-      else
-        cpp-options: -DUSE_ARRAY
+      cpp-options: -DUSE_ARRAY
 
 source-repository head
     type:     git

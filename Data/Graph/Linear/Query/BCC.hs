@@ -33,7 +33,7 @@ import Control.Applicative
 
 -- |A list of biconnected components, structured as a tuple of
 -- (component id, component edge list)
-type BCCList      = [(Int, [Edge])]
+type BCCList      = [(Int, [Edge Vertex])]
 
 -- |A mapping from internal graph vertices to biconnected component id
 type BCCMap       = Vertex -> Int
@@ -43,21 +43,23 @@ type BCCMap       = Vertex -> Int
 -- inclusion within this biconnected component
 data BCC node = BCC 
   { bccID       :: !Int
-  , bccVertices :: [Edge] -- ^ List of edges in the component
+  , bccVertices :: [Edge Vertex] -- ^ List of edges in the component
   , bccMap      :: node  -> Maybe Bool
   }
 
 instance Show payload => Show (BCC payload) where
   show (BCC _ vertices _) = show vertices
 
-
+-- |Structure holding the state of threaded through the execution of Tarjan's
+-- strongly connected components algorithm.
 data TarjanState = TS
   { nextN :: {-# UNPACK #-} !Int  -- ^ Next node number
   , nextC :: {-# UNPACK #-} !Int  -- ^ next BCC number
-  , stack :: ![Edge]    -- ^ Traversal Stack
+  , stack :: ![Edge Vertex]    -- ^ Traversal Stack
   , bccs  :: BCCList    -- ^ bcc list
   }
 
+-- |Run Tarjan's biconnected components algorithm.
 bcc :: GraphRepresentation node
     => Graph node
     -> (BCCList, BCCMap)
@@ -129,11 +131,12 @@ biConnect g marks lowpoints st v u =
 
 
 {-# INLINE processStack #-}
-processStack :: STMapping s Int -> Vertex -> Vertex -> [Edge] -> ST s ([Edge], [Edge])
+processStack :: STMapping s Int -> Vertex -> Vertex -> [Edge Vertex] -> ST s ([Edge Vertex], [Edge Vertex])
 processStack marks v w stck = do (bcc', stck') <- buildBCC marks w [] stck
                                  return ((v, w):bcc', delete (v, w) stck')
 
-buildBCC :: STMapping s Int -> Vertex -> [Edge] -> [Edge] -> ST s ([Edge], [Edge])
+{-# INLINE buildBCC #-}
+buildBCC :: STMapping s Int -> Vertex -> [Edge Vertex] -> [Edge Vertex] -> ST s ([Edge Vertex], [Edge Vertex])
 buildBCC marks w cs [] = return (cs, [])
 buildBCC marks w cs ((u1, u2):stck) =
   ifM (readSTMap marks u1 .>=. readSTMap marks w)
@@ -142,7 +145,7 @@ buildBCC marks w cs ((u1, u2):stck) =
       -- else
       (return (cs, (u1, u2):stck)) -- otherwise return the constructed component
 
--- | Construct a graph from a list of edged vertices, and compute the biconnected
+-- | Construct a graph from a list of tuples, and compute the biconnected
 -- components∙
 biConnectedComp :: Ord label
                   => [(payload, label, [label])]

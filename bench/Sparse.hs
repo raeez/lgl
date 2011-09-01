@@ -1,5 +1,4 @@
-module Sparse (sparseSuite) where
-import Criterion.Main
+module Sparse (genSparseGraph) where
 import Data.List
 import Util
 
@@ -17,10 +16,7 @@ genSparseEdges vs =
                  ([], cycle)
                  vs
   where
-    cycle = [0..length vs] ++ cycle
+    cycle = [0..(length vs `div` 5)] ++ cycle  -- decays nicely
 
 genSparseGraph :: EdgeConstructor
 genSparseGraph = \n -> genSparseEdges $ genVertices n
-
-sparseSuite :: [([Benchmark], [Benchmark])]
-sparseSuite = map (benchSuite "sparse" genSparseGraph) [1000, 5000, 10000, 20000 , 35000, 50000, 80000, 100000] -- , 125000, 150000, 175000, 200000]

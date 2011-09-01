@@ -6,5 +6,8 @@ dist
 *.chs.h
 *.csv
 *.html
+*.prof
 
 bench/bench
+bench/prof
+bench/lgl

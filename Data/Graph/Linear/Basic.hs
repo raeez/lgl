@@ -21,10 +21,6 @@ module Data.Graph.Linear.Basic
 where
 
 import Data.Graph.Linear.Graph
--- import Data.Graph.Linear.Representation.Array
--- import Data.Graph.Linear.Representation.Vector
--- import Data.Graph.Linear.Representation.HashMap
--- import Data.Graph.Linear.Representation.Map
 
 -------------------------------------------------------------------------------
 -- Basic traversals/projections
@@ -47,8 +43,3 @@ outdegree  = mapT numEdges
 
 indegree :: IntGraph -> Table Int
 indegree  = outdegree . transpose
-
-graphEmpty :: IntGraph -> Bool
-graphEmpty g = lo > hi
-  where (lo, hi) = bounds g
-
