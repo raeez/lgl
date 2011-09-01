@@ -1,6 +1,6 @@
-module Sparse (genSparseGraph) where
+module Util.Sparse (genSparseGraph) where
 import Data.List
-import Util
+import Util.Util
 
 -- | filters the sublist formed by taking every n'th element, after some shift s
 shiftedCycle :: Int -> Int -> [a] -> [a]

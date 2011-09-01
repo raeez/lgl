@@ -1,6 +1,6 @@
-module Bench where
+module Util.Suite where
 
-import Util
+import Util.Util
 
 import Control.DeepSeq
 import Criterion.Main

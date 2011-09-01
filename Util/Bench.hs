@@ -1,9 +1,9 @@
 module Main where
 import Criterion.Main
-import Dense
-import Sparse
-import Random
-import Bench
+import Util.Dense
+import Util.Sparse
+import Util.Random
+import Util.Suite
 
 denseSuite :: [([Benchmark], [Benchmark])]
 denseSuite = map (benchSuite "dense" genDenseGraph) [] -- [10, 50, 100, 500, 1000, 1500 , 2000, 2500]

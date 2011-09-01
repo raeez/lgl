@@ -1,4 +1,4 @@
-module Util where
+module Util.Util where
 
 -- | Common types made synonyms for readability.
 type Node key payload = (payload, key, [key])

@@ -4,13 +4,18 @@ import Control.Applicative
 import Control.Monad(ap)
 import Control.Monad.ST
 
+import Data.Array as A
+import Data.Array.ST
+
 import Data.Graph.Linear.Graph
-import Data.Graph.Linear.Representation.Array
+-- import Data.Graph.Linear.Representation.Array
 
 {-# INLINE unvisited #-}
 -- | Monadic action returning true if a node is unvisited in a graph traversal.
-unvisited :: STMapping s Int -> Vertex -> ST s Bool
-unvisited marks w = readSTMap marks w .==. return 0
+-- unvisited :: STMapping s Int -> Vertex -> ST s Bool
+unvisited :: ST s Int ->  ST s Bool
+-- unvisited marks w = readSTMap marks w .==. return 0
+unvisited wm = wm .==. return 0
 
 {-# INLINE ifM #-}
 -- | (restricted) Monadic if. Both branches must return the same value.

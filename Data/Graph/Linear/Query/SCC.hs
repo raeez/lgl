@@ -21,7 +21,10 @@ module Data.Graph.Linear.Query.SCC
 where
 
 import Data.Graph.Linear.Graph
-import Data.Graph.Linear.Representation.Array
+---import Data.Graph.Linear.Representation.Array
+import Data.Array as A
+import Data.Array.ST
+
 import Data.Graph.Linear.Query.Util
 import Data.List(nub, foldl')
 import Data.STRef
@@ -61,21 +64,21 @@ type SCCMap     = Vertex -> Int
 -- |Structure holding the state threaded through the execution of Tarjan's
 -- strongly connected components algorithm.
 data TarjanState = TS
-  { nextN :: {-# UNPACK #-} !Int      -- ^ Next node number
-  , nextC :: {-# UNPACK #-} !Int      -- ^ next SCC number
-  , stack :: ![Vertex]                -- ^ Traversal Stack
-  , sccs  :: !SCCList  -- ^ Completed scc list
+  { nextN :: {-# UNPACK #-} !Int  -- ^ Next node number
+  , nextC :: {-# UNPACK #-} !Int  -- ^ next SCC number
+  , stack :: ![Vertex]            -- ^ Traversal Stack
+  , sccs  :: !SCCList             -- ^ Completed scc list
   }
 
 -- |Run Tarjan's strongly connected components algorithm.
 scc :: GraphRepresentation node => Graph node -> (SCCList, SCCMap)
 scc g = runST (
-  do marks    <- newSTMap (bounds g) 0
-     lowlinks <- newSTMap (bounds g) 0
+  do marks    <- newArray (Data.Graph.Linear.Graph.bounds g) 0
+     lowlinks <- newArray (Data.Graph.Linear.Graph.bounds g) 0
      st       <- newSTRef $ TS 1 1 [] []
 
      forM_ (vertices g) $ \w ->
-        whenM (unvisited marks w)
+        whenM (unvisited $ readArray marks w)
             $ strongConnect g marks lowlinks st w
 
      final <- readSTRef st
@@ -88,44 +91,47 @@ scc g = runST (
 -- |Find the strongly connected components rooted at vertex v
 strongConnect :: GraphRepresentation node
               => Graph node                -- original graph
-               -> STMapping s Int          -- state of vertex {0 = unvisited, -ve = on the stack, +ve = in a component)
-               -> STMapping s Int          -- vertex of node
+               -- -> STMapping s Int          -- state of vertex {0 = unvisited, -ve = on the stack, +ve = in a component)
+               -- -> STMapping s Int          -- vertex of node
+               -> STUArray s Vertex Int
+               -> STUArray s Vertex Int
                -> STRef s TarjanState
                -> Vertex
                -> ST s ()
 strongConnect g marks lowlinks st v =
-  do s <- readSTRef st
-     let n = nextN s
-     writeSTMap marks    v $ (negate n)
-     writeSTMap lowlinks v $ n
-     let s' =  s { stack = v:stack s
-                 , nextN = n + 1
-                 }
-     writeSTRef st s'
+  do s1 <- readSTRef st
+     let n = nextN s1
+     writeArray marks    v (negate n)
+     writeArray lowlinks v n
+     let s1' =  s1 { stack = v:stack s1
+                   , nextN = n + 1
+                   }
+     writeSTRef st s1'
 
      forM_ (g `adjacentTo` v) $ \w ->
-        ifM (unvisited marks w)
-            (do strongConnect g marks lowlinks st w
-                newLowLink <- min <$> readSTMap lowlinks v <*> readSTMap lowlinks w
-                writeSTMap lowlinks v newLowLink)
-            -- else
-            (whenM ((readSTMap marks w .>. readSTMap marks v) .&&.   -- back edge
-                     ((readSTMap marks w) .<. return 0))                  -- w on stack
-                $ do ll' <- min <$> readSTMap lowlinks v <*> (negate <$> readSTMap marks w)
-                     writeSTMap lowlinks v ll')
+        do wm <- readArray marks w
+           ifM (unvisited $ return wm)
+               (do strongConnect g marks lowlinks st w
+                   newLowLink <- min <$> readArray lowlinks v <*> readArray lowlinks w
+                   writeArray lowlinks v newLowLink)
+               -- else
+               (do (whenM (return wm .<. return 0)    -- is a back edge + is on stack
+                     $ do ll' <- min <$> readArray lowlinks v <*> (negate <$> return wm)
+                          writeArray lowlinks v ll'))
 
-     whenM (readSTMap lowlinks v .==. (negate <$> readSTMap marks v))
-         $ do s <- readSTRef st
-              let nextComponentID = nextC s
-                  (newSCC, newStack) = span (>= v) (stack s)
-                  s' =  s { stack = newStack
-                          , nextC = nextComponentID + 1
-                          , sccs = (nextComponentID, newSCC):sccs s
-                          }
+     whenM (readArray lowlinks v .>=. return n)
+         $ do s2 <- readSTRef st
+              let nextComponentID = nextC s2
+                  (newSCC, newStack) = span (>= v) (stack s2)
+                  s2' =  s2 { stack = newStack
+                            , nextC = nextComponentID + 1
+                            , sccs = (nextComponentID, newSCC):sccs s2
+                            }
+
               forM_ newSCC $ \i ->
-                 writeSTMap marks i nextComponentID
+                 do writeArray marks i nextComponentID
 
-              writeSTRef st s'
+              writeSTRef st s2'
 
 -- |Construct a graph from a list of tuples and compute the strongly connected
 -- components.
@@ -133,7 +139,7 @@ stronglyConnComp :: Ord label
                   => [(payload, label, [label])]
                   -> [SCC payload]
 stronglyConnComp es = reverse $ map cvt cs
-  where g           = mkGraph $ map (\(p, l, ls) -> Node p l ls) es
+  where g           = mkGraph $ map nodeConstructor es
         (cs,lkp)    = scc g
         cvt (n,[v]) = let Node payload _ _ = grVertexMap g v
                       in if n `elem` map lkp (g `adjacentTo` v)

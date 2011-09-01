@@ -1,7 +1,7 @@
-module Random (genRandomGraph) where
+module Util.Random (genRandomGraph) where
 import Data.List
 import System.Random
-import Util
+import Util.Util
 import Debug.Trace
 
 generator :: StdGen

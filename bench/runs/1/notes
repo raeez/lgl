@@ -1,7 +1,0 @@
--- containers, digraph, graphscc:
-  original source files
-
--- bench:
-  Digraph: not creating graph from edged vertices (graph creatino separate)
-           (running 'graphFrom...' separately)
-  graphscc + containers: graph creation contained within scc routine

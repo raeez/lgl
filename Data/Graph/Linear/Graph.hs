@@ -27,23 +27,28 @@ where
 {- #ifdef USE_VECTOR
 import Data.Graph.Linear.Representation.Vector as Rep
  #else-}
-import Data.Graph.Linear.Representation.Array as Rep
+--import Data.Graph.Linear.Representation.Array as Rep
 -- #endif
 
+import Data.Array
 import Data.Maybe(mapMaybe)
 import Data.List
 
 -------------------------------------------------------------------------------
 -- Internal Graph Representation
 
+-- | Lower and upper bounds respectively of the domain of the graph's vertices
+type Bounds = (Int, Int)
+
 -- | A single Vertex represented in an InternalGraph.
-type Vertex        = Int
+type Vertex = Int
 
 -- | A single edge between any two representations of points in a graph.
-type Edge n        = (n, n)
+type Edge n = (n, n)
 
 -- | An internal-only adjacency list mapping from Vertices to neighboring vertices.
-type InternalGraph = Rep.Mapping [Vertex]
+--type InternalGraph = Rep.Mapping [Vertex]
+type InternalGraph = Array Vertex [Vertex]
 
 -------------------------------------------------------------------------------
 -- External Graph Representation
@@ -53,8 +58,8 @@ type InternalGraph = Rep.Mapping [Vertex]
 -- kept polymorphic.
 data Node payload label = Node
   { payload    :: payload  -- ^ The information stored at this point in the graph
-  , label      :: !label   -- ^ The label for this node
-  , successors :: ![label] -- ^ List of labeled edges rechable from this node.
+  , label      :: {-# UNPACK #-} !label   -- ^ The label for this node
+  , successors :: {-# UNPACK #-} ![label] -- ^ List of labeled edges rechable from this node.
   }
 
 instance Eq l => Eq (Node p l) where
@@ -109,44 +114,39 @@ instance Ord l => GraphRepresentation (Node p l) where
     , grNodeMap       :: Node p l -> Maybe Vertex
     }
 
-  empty                    = Graph Rep.empty (error "emptyGraph") (const Nothing)
-  mkGraph nodes            = Graph intgraph vertex_fn (label_vertex . label)
+  empty                    = Graph (array (1,0) []) (error "emptyGraph") (const Nothing)
+  mkGraph nodes            = Graph intgraph (\v -> vertex_map ! v) (\n -> key_vertex $ label n)
     where
-      (bounds, vertex_fn, label_vertex, numbered_nodes) = reduceNodesIntoVertices nodes label
+      max_v           = length nodes - 1
+      bounds          = (0, max_v)
 
-      reduceNodesIntoVertices nodes label_extractor = (bounds, (!) vertex_map, label_vertex, numbered_nodes)
+      (Node _ l1 _) `lt` (Node _ l2 _) = l1 `compare` l2
+      sorted_nodes    = sortBy lt nodes
+
+      numbered_nodes  = [0..] `zip` sorted_nodes
+
+      intgraph        = array bounds [(v, mapMaybe key_vertex ks) | (v, Node _ _ ks) <- numbered_nodes]
+      key_map         = array bounds [(v, l) | (v, Node _ l _) <- numbered_nodes]
+      vertex_map      = array bounds numbered_nodes
+
+
+      -- key_vertex :: label -> Maybe Vertex
+      -- returns Nothing for non-interesting vertices
+      key_vertex k    = find 0 max_v
         where
-          max_v           = length nodes - 1
-          bounds          = (0, max_v)
+          find a b | a > b     = Nothing
+                   | otherwise = let mid = (a + b) `div` 2
+                                 in case compare k (key_map ! mid) of
+                                      LT -> find a (mid - 1)
+                                      EQ -> Just mid
+                                      GT -> find (mid + 1) b
 
-          sorted_nodes    = let n1 `le` n2 = (label_extractor n1 `compare` label_extractor n2)
-                            in sortBy le nodes
-
-          numbered_nodes  = [0..] `zip` sorted_nodes
-
-          key_map         = Rep.mkMap bounds [(v, label_extractor node) | (v, node) <- numbered_nodes]
-          vertex_map      = Rep.mkMap bounds numbered_nodes
-
-          --label_vertex :: label -> Maybe Vertex
-          -- returns Nothing for non-interesting vertices
-          label_vertex k = find 0 max_v
-            where
-              find a b | a > b     = Nothing
-                       | otherwise = let mid = (a + b) `div` 2
-                                     in case compare k (key_map ! mid) of
-                                          LT -> find a (mid - 1)
-                                          EQ -> Just mid
-                                          GT -> find (mid + 1) b
-
-      intgraph = Rep.mkMap bounds [(v, mapMaybe label_vertex ks) | (v, Node _ _ ks) <- numbered_nodes]
-
-  nodes     (Graph g vm _) = map vm (domain g)
-  vertices  (Graph g vm _) = domain g
-  edges     (Graph g vm _) = [ (vm v, vm w) | v <- domain g, w <- g ! v ]
-  vedges    (Graph g _ _)  = [ (v, w) | v <- domain g, w <- g ! v ]
+  nodes     (Graph g vm _) = map vm (indices g)
+  vertices  (Graph g vm _) = indices g
+  edges     (Graph g vm _) = [ (vm v, vm w) | v <- indices g, w <- g ! v ]
+  vedges    (Graph g _ _)  = [ (v, w) | v <- indices g, w <- g ! v ]
   adjacentTo (Graph g _ _) = (!) g
-  bounds    (Graph g _ _)  = domainBounds g
-
+  bounds    (Graph g _ _)  = Data.Array.bounds g
 
 -- |Helper function for constructing graphs out of lists of tuples.
 graphFromEdgedVertices :: Ord label => [(payload, label, [label])] -> Graph (Node payload label)

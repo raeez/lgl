@@ -1,6 +1,0 @@
--- containers:
-  remove ST check
-  NOT DOING: linnear time concat -> constant time append
-
--- bench:
-  all creating graph from edged vertices

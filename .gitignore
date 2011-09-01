@@ -1,5 +1,5 @@
 .DS_Store
-dist
+dist/*
 *.o
 *.hi
 *.chi
@@ -8,6 +8,6 @@ dist
 *.html
 *.prof
 
-bench/bench
-bench/prof
-bench/lgl
+dist/bench
+dist/prof
+dist/lgl

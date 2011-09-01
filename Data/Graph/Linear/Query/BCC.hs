@@ -21,8 +21,10 @@ module Data.Graph.Linear.Query.BCC
 )
 where
 
+import Data.Array as A
+import Data.Array.ST
 import Data.Graph.Linear.Graph
-import Data.Graph.Linear.Representation.Array
+
 import Data.Graph.Linear.Query.Util
 import Data.List(delete, nub, foldl')
 import Data.STRef
@@ -64,12 +66,12 @@ bcc :: GraphRepresentation node
     => Graph node
     -> (BCCList, BCCMap)
 bcc g = runST (
-  do marks      <- newSTMap (bounds g) 0
-     lowpoints  <- newSTMap (bounds g) 0
+  do marks      <- newArray (Data.Graph.Linear.Graph.bounds g) 0
+     lowpoints  <- newArray (Data.Graph.Linear.Graph.bounds g) 0
      st         <- newSTRef $ TS 1 1 [] []
 
      forM_ (vertices g) $ \w ->
-        whenM (unvisited marks w)
+        whenM (unvisited $ readArray marks w)
             $ biConnect g marks lowpoints st w 0
 
      final <- readSTRef st
@@ -81,8 +83,10 @@ bcc g = runST (
 {-# INLINE biConnect #-}
 biConnect :: GraphRepresentation node
             => Graph node
-            -> STMapping s Int
-            -> STMapping s Int
+            -- -> STMapping s Int
+            -- -> STMapping s Int
+            -> STUArray s Int Int
+            -> STUArray s Int Int
             -> STRef s TarjanState
             -> Vertex
             -> Vertex
@@ -90,30 +94,30 @@ biConnect :: GraphRepresentation node
 biConnect g marks lowpoints st v u =
   do s <- readSTRef st
      let n = nextN s
-     writeSTMap marks     v n
-     writeSTMap lowpoints v n
+     writeArray marks     v n
+     writeArray lowpoints v n
      let s' =  s { nextN = n + 1 }
      writeSTRef st s'
 
      forM_ (g `adjacentTo` v) $ \w ->
-        ifM (unvisited marks w)
+        ifM (unvisited $ readArray marks w)
             (do s <- readSTRef st
                 let s' = s { stack = (v, w): stack s }
                 writeSTRef st s'
 
                 biConnect g marks lowpoints st w v
 
-                newLowPoint <- min <$> readSTMap lowpoints v <*> readSTMap lowpoints w
-                writeSTMap lowpoints v newLowPoint
+                newLowPoint <- min <$> readArray lowpoints v <*> readArray lowpoints w
+                writeArray lowpoints v newLowPoint
 
-                whenM (readSTMap lowpoints w .>=. readSTMap marks v)
+                whenM (readArray lowpoints w .>=. readArray marks v)
                     $ do s <- readSTRef st
                          let newComponentID = nextC s
                          (newBCC, newStack) <- processStack marks v w (stack s)
 
                          forM_ newBCC $ \(a, b) ->
-                            do writeSTMap marks a newComponentID
-                               writeSTMap marks b newComponentID
+                            do writeArray marks a newComponentID
+                               writeArray marks b newComponentID
 
                          let s' = s { nextC = newComponentID + 1
                                     , bccs  = (newComponentID, newBCC):bccs s
@@ -121,25 +125,25 @@ biConnect g marks lowpoints st v u =
                                     }
                          writeSTRef st s')
             -- else
-            (whenM ((readSTMap marks w .<. readSTMap marks v) .&&.
+            (whenM ((readArray marks w .<. readArray marks v) .&&.
                     (return w ./=. return u))
                 $ do s <- readSTRef st
                      let s' = s { stack = (v, w):stack s }
                      writeSTRef st s'
-                     lp' <- min <$> readSTMap lowpoints v <*> readSTMap marks w
-                     writeSTMap lowpoints v lp')
+                     lp' <- min <$> readArray lowpoints v <*> readArray marks w
+                     writeArray lowpoints v lp')
 
 
 {-# INLINE processStack #-}
-processStack :: STMapping s Int -> Vertex -> Vertex -> [Edge Vertex] -> ST s ([Edge Vertex], [Edge Vertex])
+processStack :: STUArray s Vertex Int -> Vertex -> Vertex -> [Edge Vertex] -> ST s ([Edge Vertex], [Edge Vertex])
 processStack marks v w stck = do (bcc', stck') <- buildBCC marks w [] stck
                                  return ((v, w):bcc', delete (v, w) stck')
 
 {-# INLINE buildBCC #-}
-buildBCC :: STMapping s Int -> Vertex -> [Edge Vertex] -> [Edge Vertex] -> ST s ([Edge Vertex], [Edge Vertex])
+-- buildBCC :: STMapping s Int -> Vertex -> [Edge Vertex] -> [Edge Vertex] -> ST s ([Edge Vertex], [Edge Vertex])
 buildBCC marks w cs [] = return (cs, [])
 buildBCC marks w cs ((u1, u2):stck) =
-  ifM (readSTMap marks u1 .>=. readSTMap marks w)
+  ifM (readArray marks u1 .>=. readArray marks w)
       (buildBCC marks w ((u1,u2):cs) stck) -- add this edge to the current component
                                            -- and remove from stack
       -- else
