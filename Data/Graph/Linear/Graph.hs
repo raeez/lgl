@@ -60,8 +60,8 @@ buildG = A.accumArray (flip (:)) []
 -- kept polymorphic.
 data Node payload label = Node
   { payload    :: payload  -- ^ The information stored at this point in the graph
-  , label      :: {-# UNPACK #-} !label   -- ^ The label for this node
-  , successors :: {-# UNPACK #-} ![label] -- ^ List of labeled edges rechable from this node.
+  , label      :: !label   -- ^ The label for this node
+  , successors :: ![label] -- ^ List of labeled edges rechable from this node.
   }
 
 instance Eq l => Eq (Node p l) where

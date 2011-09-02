@@ -54,4 +54,4 @@ instance (NFData p, NFData l)  => NFData(LG.Node p l) where
     rnf (LG.Node p l ls) = seq (rnf p) (seq (rnf l) (seq (rnf ls) ()))
 
 instance NFData v => NFData(LB.BCC v) where
-    rnf (LB.BCC i v _) = seq (rnf i) (seq (rnf v) ())
+    rnf (LB.BCC v) = seq (rnf v) ()

@@ -21,6 +21,7 @@ module Data.Graph.Linear.Query.BCC
 )
 where
 
+import qualified Data.Array as A
 import Data.Graph.Linear.Graph
 import Data.Graph.Linear.Basic
 import Data.Graph.Linear.Query.DFS
@@ -55,16 +56,16 @@ bcc :: GraphRepresentation node
       -> T.Forest [Vertex]
 bcc g = (concat . map bicomps . map (do_label g dnum)) forest
  where forest = dff g
-       dnum   = preArr (bounds g) forest
+       dnum   = preorderArr (bounds g) forest
 
 do_label :: GraphRepresentation node
           => Graph node
-          -> (Int -> Int)
+          -> A.Array Int Int
           -> T.Tree Vertex
           -> T.Tree (Vertex,Int,Int)
-do_label g dnum (T.Node v ts) = T.Node (v,dnum v,lv) us
+do_label g dnum (T.Node v ts) = T.Node (v,dnum A.! v,lv) us
  where us = map (do_label g dnum) ts
-       lv = minimum ([dnum v] ++ [dnum w | w <- g `adjacentTo` v]
+       lv = minimum ([dnum A.! v] ++ [dnum A.! w | w <- g `adjacentTo` v]
                      ++ [lu | T.Node (_,_,lu) _ <- us])
 
 bicomps :: T.Tree (Vertex,Int,Int) -> T.Forest [Vertex]

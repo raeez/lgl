@@ -16,8 +16,7 @@
 --
 module Data.Graph.Linear.Basic
 (
-    preorder, preorderF
-  , preArr
+    preorder, preorderF, preorderArr
   , postorder, postorderF
   , postOrd
   , topSort
@@ -42,10 +41,10 @@ preorder            :: T.Tree a -> [a]
 preorder (T.Node a ts) = a : preorderF ts
 
 preorderF           :: T.Forest a -> [a]
-preorderF ts         = concat (map preorder ts)
+preorderF ts         = concatMap preorder ts
 
-preArr          :: Bounds -> T.Forest Vertex -> (Int -> Int)
-preArr bnds f = \i -> tabulate bnds (preorderF f) A.! i
+preorderArr          :: Bounds -> T.Forest Vertex -> A.Array Int Int
+preorderArr bnds f = tabulate bnds (preorderF f)
   where tabulate bnds vs = A.array bnds (vs `zip` [1..])
 
 ------------------------------------------------------------
@@ -56,7 +55,7 @@ postorder :: T.Tree a -> [a]
 postorder (T.Node a ts) = postorderF ts ++ [a]
 
 postorderF   :: T.Forest a -> [a]
-postorderF ts = concat (map postorder ts)
+postorderF ts = concatMap postorder ts
 
 postOrd      :: GraphRepresentation node => Graph node -> [Vertex]
 postOrd       = postorderF . dff
