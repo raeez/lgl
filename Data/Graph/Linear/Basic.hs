@@ -29,23 +29,20 @@ import Data.Graph.Linear.Graph
 import Data.Graph.Linear.Query.DFS
 import qualified Data.Tree as T
 
--------------------------------------------------------------------------------
--- Basic traversals/projections
---
---
---
+-- |Helper function for constructing arrays from traversals.
+tabulate bnds vs = A.array bnds (vs `zip` [1..])
+
 ------------------------------------------------------------
 -- Algorithm 1: depth first search numbering
 ------------------------------------------------------------
-preorder            :: T.Tree a -> [a]
+preorder :: T.Tree a -> [a]
 preorder (T.Node a ts) = a : preorderF ts
 
-preorderF           :: T.Forest a -> [a]
-preorderF ts         = concatMap preorder ts
+preorderF :: T.Forest a -> [a]
+preorderF ts = concatMap preorder ts
 
-preorderArr          :: Bounds -> T.Forest Vertex -> A.Array Int Int
+preorderArr :: Bounds -> T.Forest Vertex -> A.Array Vertex Int
 preorderArr bnds f = tabulate bnds (preorderF f)
-  where tabulate bnds vs = A.array bnds (vs `zip` [1..])
 
 ------------------------------------------------------------
 -- Algorithm 2: topological sorting
@@ -54,17 +51,20 @@ preorderArr bnds f = tabulate bnds (preorderF f)
 postorder :: T.Tree a -> [a]
 postorder (T.Node a ts) = postorderF ts ++ [a]
 
-postorderF   :: T.Forest a -> [a]
+postorderF :: T.Forest a -> [a]
 postorderF ts = concatMap postorder ts
 
-postOrd      :: GraphRepresentation node => Graph node -> [Vertex]
-postOrd       = postorderF . dff
+postorderArr :: Bounds -> T.Forest Vertex -> A.Array Vertex Int
+postorderArr bnds f = tabulate bnds (postorderF f)
+
+postOrd :: GraphRepresentation node => Graph node -> [Vertex]
+postOrd = postorderF . dff
 
 -- | A topological sort of the graph.
 -- The order is partially specified by the condition that a vertex /i/
 -- precedes /j/ whenever /j/ is reachable from /i/ but not vice versa.
-topSort      :: GraphRepresentation node => Graph node -> [Vertex]
-topSort       = reverse . postOrd
+topSort :: GraphRepresentation node => Graph node -> [Vertex]
+topSort = reverse . postOrd
 
 ------------------------------------------------------------
 -- Algorithm 3: connected components

@@ -20,12 +20,16 @@ unvisited wm = wm .==. return 0
 {-# INLINE ifM #-}
 -- | (restricted) Monadic if. Both branches must return the same value.
 ifM :: Monad m => m Bool -> m a -> m a -> m a
-ifM p tb fb = p >>= \pred -> if pred then tb else fb
+ifM p tb fb = p >>= \pred -> case pred of
+                              True -> tb
+                              False -> fb
 
 {-# INLINE whenM #-}
 -- | Monadic when. Equivalent to single-arm if.
 whenM :: Monad m => m Bool -> m a -> m ()
-whenM p tb = p >>= \pred -> if pred then tb >> return () else return ()
+whenM p tb = p >>= \pred -> case pred of
+                            True -> tb >> return ()
+                            False -> return ()
 
 {-# INLINE (.==.) #-}
 -- |Applicative equality operator for lifted values.

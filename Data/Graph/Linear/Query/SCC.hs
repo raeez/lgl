@@ -20,8 +20,7 @@ module Data.Graph.Linear.Query.SCC
   )
 where
 
-import Data.Graph.Linear.Graph
----import Data.Graph.Linear.Representation.Array
+import Data.Graph.Linear.Graph as G
 import Data.Array as A
 import Data.Array.ST
 
@@ -78,8 +77,8 @@ data TarjanState = TS
 -- |Run Tarjan's strongly connected components algorithm.
 scc :: GraphRepresentation node => Graph node -> (SCCList, SCCMap)
 scc g = runST (
-  do marks    <- newArray (Data.Graph.Linear.Graph.bounds g) 0
-     lowlinks <- newArray (Data.Graph.Linear.Graph.bounds g) 0
+  do marks    <- newArray (G.bounds g) 0
+     lowlinks <- newArray (G.bounds g) 0
      st       <- newSTRef $ TS 1 1 [] []
 
      forM_ (vertices g) $ \w ->
@@ -89,15 +88,13 @@ scc g = runST (
      final <- readSTRef st
      sccMap <- unsafeFreeze marks
 
-     return (sccs final, \i -> sccMap ! i)
+     return (sccs final, (!) sccMap)
   )
 
 {-# INLINE strongConnect #-}
 -- |Find the strongly connected components rooted at vertex v
 strongConnect :: GraphRepresentation node
               => Graph node                -- original graph
-               -- -> STMapping s Int          -- state of vertex {0 = unvisited, -ve = on the stack, +ve = in a component)
-               -- -> STMapping s Int          -- vertex of node
                -> STUArray s Vertex Int
                -> STUArray s Vertex Int
                -> STRef s TarjanState
@@ -120,14 +117,15 @@ strongConnect g marks lowlinks st v =
                    newLowLink <- min <$> readArray lowlinks v <*> readArray lowlinks w
                    writeArray lowlinks v newLowLink)
                -- else
-               (do (whenM (return wm .<. return 0)    -- is a back edge + is on stack
+               (do (whenM (return wm .<. return 0) -- is a back edge + is on stack
                      $ do ll' <- min <$> readArray lowlinks v <*> (negate <$> return wm)
                           writeArray lowlinks v ll'))
 
      whenM (readArray lowlinks v .>=. return n)
          $ do s2 <- readSTRef st
               let nextComponentID = nextC s2
-                  (newSCC, newStack) = span (>= v) (stack s2)
+                  (newSCC', h:newStack) = span (/= v) (stack s2)
+                  newSCC = h:newSCC'
                   s2' =  s2 { stack = newStack
                             , nextC = nextComponentID + 1
                             , sccs = (nextComponentID, newSCC):sccs s2
