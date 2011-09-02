@@ -16,7 +16,7 @@ genSparseEdges vs =
                  ([], cycle)
                  vs
   where
-    cycle = [0..(length vs `div` 5)] ++ cycle  -- decays nicely
+    cycle = [0..(length vs `div` 5)] ++ cycle
 
 genSparseGraph :: EdgeConstructor
 genSparseGraph = \n -> genSparseEdges $ genVertices n
