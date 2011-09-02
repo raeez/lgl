@@ -14,7 +14,6 @@ import Data.List(nub, sort)
 import Test.HUnit
 import Debug.Trace
 
---main :: IO ()
 main = runTestTT tests
 
 consTest g n    = [header ~: run ~=? spec]
@@ -26,7 +25,7 @@ consTest g n    = [header ~: run ~=? spec]
 
 testSCC (h, g) n = consTest g n ++ [header ~: run ~=? spec]
   where header   = h ++ show n
-        spec     = SCCList $ map toLGLSCC $ GS.stronglyConnComp  inputG
+        spec     = SCCList $ map toLGLSCC $ DG.stronglyConnCompFromEdgedVertices inputG
         run      = SCCList $ LGS.stronglyConnComp inputG
         inputG   = g n
 
@@ -46,8 +45,8 @@ tests = test $ concatMap (\n -> randomT n
                             ++ denseT n) [1, 10, 20, 30, 40, 50, 100, 1000, 2000]
 
 -- Testing for SCC equality between libraries
-toLGLSCC (CG.AcyclicSCC v) = LGS.AcyclicSCC v
-toLGLSCC (CG.CyclicSCC v)  = LGS.CyclicSCC v
+toLGLSCC (DG.AcyclicSCC v) = LGS.AcyclicSCC v
+toLGLSCC (DG.CyclicSCC v)  = LGS.CyclicSCC v
 
 data SCCList v = SCCList [LGS.SCC v] deriving Show
 
@@ -58,8 +57,6 @@ instance Eq a => Eq(SCCList a) where
 data BCCList v = BCCList [FlatBCC v]
 data FlatBCC v = FlatBCC [v]
 
--- toLGLBCC :: C.Tree a -> [FlatBCC a]
--- toLGLBCC t = trace ("\n\n******\ntree: " ++ C.drawTree (fmap show t)) $ map (\vs -> FlatBCC $ sort $ nub vs) (C.flatten t)
 toLGLBCC t = map (\vs -> FlatBCC $ sort $ nub vs) (C.flatten t)
 
 convT :: DG.Tree v -> C.Tree v
@@ -69,7 +66,6 @@ convF :: [DG.Tree v] -> C.Forest v
 convF [] = []
 convF (t:ts) = convT t:convF ts
 
--- flattenBCC :: LGB.BCC (LGL.Vertex, LGL.Vertex) -> FlatBCC LGL.Vertex
 flattenBCC (LGB.BCC es) =  FlatBCC $ sort $ nub $ es
 
 instance Eq a => Eq(BCCList a) where

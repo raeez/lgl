@@ -25,6 +25,7 @@ import Data.Array as A
 import Data.Array.ST
 
 import Data.Graph.Linear.Query.Util
+import Data.Graph.Linear.Query.DFS
 import Data.List(nub, foldl')
 import Data.STRef
 import Control.Monad(forM_, ap)
@@ -44,6 +45,7 @@ instance Eq a => Eq(SCC a) where
     (AcyclicSCC _)  == (CyclicSCC _)   = False
     (CyclicSCC v1)  == (CyclicSCC v2)  = all (`elem` v2) v1 && all (`elem` v1) v2
     (AcyclicSCC v1) == (AcyclicSCC v2) = v1 == v2
+
 instance Show s => Show (SCC s) where
     show (AcyclicSCC v) = show v
     show (CyclicSCC vs) = show vs
@@ -164,103 +166,3 @@ stronglyConnCompN es = reverse $ map cvt cs
                          then CyclicSCC [grVertexMap g v]
                          else AcyclicSCC (grVertexMap g v)
         cvt (_,vs)   = CyclicSCC (map (grVertexMap g) vs)
-
------------------------------------------------------------------------------
-{-
-type WorkItem key payload
-  = (Node key payload,	-- Tip of the path
-     [payload])	  	-- Rest of the path; 
-     			--  [a,b,c] means c depends on b, b depends on a
-
--- | Find a reasonably short cycle a->b->c->a, in a strongly
--- connected component.  The input nodes are presumed to be
--- a SCC, so you can start anywhere.
-findCycle :: forall payload key. Ord key 
-          => [Node key payload]     -- The nodes.  The dependencies can
-	     	     	  	    -- contain extra keys, which are ignored
-	  -> Maybe [payload]        -- A cycle, starting with node
-	     			    -- so each depends on the next
-findCycle graph
-  = go Set.empty (new_work root_deps []) []
-  where
-    env :: Map.Map key (Node key payload)
-    env = Map.fromList [ (key, node) | node@(_, key, _) <- graph ]
-
-    -- Find the node with fewest dependencies among the SCC modules
-    -- This is just a heuristic to find some plausible root module
-    root :: Node key payload
-    root = fst (minWith snd [ (node, count (`Map.member` env) deps) 
-                            | node@(_,_,deps) <- graph ])
-    (root_payload,root_key,root_deps) = root
-
-
-    -- 'go' implements Dijkstra's algorithm, more or less
-    go :: Set.Set key	-- Visited
-       -> [WorkItem key payload]	-- Work list, items length n
-       -> [WorkItem key payload]	-- Work list, items length n+1
-       -> Maybe [payload]		-- Returned cycle
-       -- Invariant: in a call (go visited ps qs),
-       --            visited = union (map tail (ps ++ qs))
-
-    go _       [] [] = Nothing	-- No cycles
-    go visited [] qs = go visited qs []
-    go visited (((payload,key,deps), path) : ps) qs 
-       | key == root_key           = Just (root_payload : reverse path)
-       | key `Set.member` visited  = go visited ps qs
-       | key `Map.notMember` env   = go visited ps qs
-       | otherwise                 = go (Set.insert key visited)
-                                        ps (new_qs ++ qs)
-       where
-	 new_qs = new_work deps (payload : path)
-
-    new_work :: [key] -> [payload] -> [WorkItem key payload]
-    new_work deps path = [ (n, path) | Just n <- map (`Map.lookup` env) deps ]
--}
-
-{-
---------------------------------------------------------------------------------
--- | Compute the list of strongly connected components of a graph.
--- The components are topologically sorted:
--- if v1 in C1 points to v2 in C2, then C2 will come before C1 in the list.
-sccList :: GraphRepresentation node => Graph node -> [SCC Vertex]
-sccList g = reverse $ map (to_scc g lkp) cs
-  where (cs,lkp) = scc g
-
--- | Compute the list of strongly connected components of a graph.
--- Each component contains the adjecency information from the original graph.
--- The components are topologically sorted:
--- if v1 in C1 points to v2 in C2, then C2 will come before C1 in the list.
-sccListR :: GraphRepresentation node => Graph node -> [SCC (Vertex,[Vertex])]
-sccListR g = reverse $ map cvt cs
-  where (cs,lkp) = scc g
-        cvt (n,[v]) = let adj = g `adjacentTo` v
-                      in if  n `elem` map lkp adj
-                           then CyclicSCC [(v,adj)]
-                           else AcyclicSCC (v,adj)
-        cvt (_,vs)  = CyclicSCC [ (v, g `adjacentTo` v) | v <- vs ]
-
--- | Quotient a graph with the relation that relates vertices that
--- belong to the same SCC.  The vertices in the new graph are the
--- SCCs of the old graph, and there is an edge between two components,
--- if there is an edge between any of their vertices.
--- The entries in the resulting list are in reversed-topologically sorted:
--- if v1 in C1 points to v2 in C2, then C1 will come before C2 in the list.
-sccGraph :: GraphRepresentation node
-          => Graph node
-          -> [(SCC Int, Int, [Int])]
-sccGraph g = map to_node cs
-  where (cs,lkp) = scc g
-        to_node x@(n,this) = ( to_scc g lkp x
-                             , n
-                             , nub $ concatMap (map lkp . (g `adjacentTo`)) this
-                             )
-
-to_scc :: GraphRepresentation node
-        => Graph node
-        -> (Vertex -> Int)
-        -> (Int,[Vertex])
-        -> SCC Vertex
-to_scc g lkp (n,[v]) = if n `elem` map lkp (g `adjacentTo` v) then CyclicSCC [v]
-                                                              else AcyclicSCC v
-to_scc _ _ (_,vs)    = CyclicSCC vs
--}

@@ -17,10 +17,13 @@
 
 module Data.Graph.Linear.Query.DFS
 (
-    dff, dfs
+    dff
+  , dfs
 )
 where
 
+import Control.Applicative
+import Control.Monad(ap)
 import Control.Monad.ST
 import Data.Array.ST
 import Data.Graph.Linear.Graph
@@ -46,19 +49,24 @@ prune bnds ts = run bnds (chop ts)
 chop         :: T.Forest Vertex -> SetM s (T.Forest Vertex)
 chop []       = return []
 chop (T.Node v ts : us)
-              = do
-                visited <- contains v
-                if visited then
-                  chop us
-                 else do
-                  include v
-                  as <- chop ts
-                  bs <- chop us
-                  return (T.Node v as : bs)
+              = do visited <- contains v
+                   if visited
+                   then chop us
+                   else do include v
+                           as <- chop ts
+                           bs <- chop us
+                           return (T.Node v as : bs)
 
 -- A monad holding a set of vertices visited so far.
 
 newtype SetM s a = SetM { runSetM :: STUArray s Vertex Bool -> ST s a }
+
+instance Functor (SetM s) where
+    fmap f m = m >>= return . f
+
+instance Applicative (SetM s) where
+    pure = return
+    (<*>) = ap
 
 instance Monad (SetM s) where
     return x     = SetM $ const (return x)
