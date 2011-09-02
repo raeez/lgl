@@ -40,6 +40,11 @@ instance Functor SCC where
     fmap f (AcyclicSCC v) = AcyclicSCC (f v)
     fmap f (CyclicSCC vs) = CyclicSCC (fmap f vs)
 
+instance Eq a => Eq(SCC a) where
+    (CyclicSCC _)   == (AcyclicSCC _)  = False
+    (AcyclicSCC _)  == (CyclicSCC _)   = False
+    (CyclicSCC v1)  == (CyclicSCC v2)  = all (`elem` v2) v1 && all (`elem` v1) v2
+    (AcyclicSCC v1) == (AcyclicSCC v2) = v1 == v2
 instance Show s => Show (SCC s) where
     show (AcyclicSCC v) = show v
     show (CyclicSCC vs) = show vs

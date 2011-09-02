@@ -16,30 +16,63 @@
 --
 module Data.Graph.Linear.Basic
 (
-  vertices, edges
+    preorder, preorderF
+  , preArr
+  , postorder, postorderF
+  , postOrd
+  , topSort
+  , components
 )
 where
 
+import qualified Data.Array as A
 import Data.Graph.Linear.Graph
+import Data.Graph.Linear.Query.DFS
+import qualified Data.Tree as T
 
 -------------------------------------------------------------------------------
 -- Basic traversals/projections
 --
-mapT    :: (Vertex -> a -> b) -> Table a -> Table b
-mapT f t = array (bounds t) [ (v, f v (t ! v)) | v <- indices t ]
+--
+--
+------------------------------------------------------------
+-- Algorithm 1: depth first search numbering
+------------------------------------------------------------
+preorder            :: T.Tree a -> [a]
+preorder (T.Node a ts) = a : preorderF ts
 
-buildG :: Bounds -> [IntEdge] -> IntGraph
-buildG bounds edges = accumArray (flip (:)) [] bounds edges
+preorderF           :: T.Forest a -> [a]
+preorderF ts         = concat (map preorder ts)
 
-transpose  :: IntGraph -> IntGraph
-transpose g = buildG (bounds g) (reverseE g)
+preArr          :: Bounds -> T.Forest Vertex -> (Int -> Int)
+preArr bnds f = \i -> tabulate bnds (preorderF f) A.! i
+  where tabulate bnds vs = A.array bnds (vs `zip` [1..])
 
-reverseE    :: IntGraph -> [IntEdge]
-reverseE g   = [ (w, v) | (v, w) <- edges g ]
+------------------------------------------------------------
+-- Algorithm 2: topological sorting
+------------------------------------------------------------
 
-outdegree :: IntGraph -> Table Int
-outdegree  = mapT numEdges
-             where numEdges _ ws = length ws
+postorder :: T.Tree a -> [a]
+postorder (T.Node a ts) = postorderF ts ++ [a]
 
-indegree :: IntGraph -> Table Int
-indegree  = outdegree . transpose
+postorderF   :: T.Forest a -> [a]
+postorderF ts = concat (map postorder ts)
+
+postOrd      :: GraphRepresentation node => Graph node -> [Vertex]
+postOrd       = postorderF . dff
+
+-- | A topological sort of the graph.
+-- The order is partially specified by the condition that a vertex /i/
+-- precedes /j/ whenever /j/ is reachable from /i/ but not vice versa.
+topSort      :: GraphRepresentation node => Graph node -> [Vertex]
+topSort       = reverse . postOrd
+
+------------------------------------------------------------
+-- Algorithm 3: connected components
+------------------------------------------------------------
+
+-- | The connected components of a graph.
+-- Two vertices are connected if there is a path between them, traversing
+-- edges in either direction.
+components   :: GraphRepresentation node => Graph node -> T.Forest Vertex
+components    = dff . undirected

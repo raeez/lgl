@@ -20,10 +20,10 @@ dist/lgl: Util/Util.hs Util/Dense.hs Util/Random.hs Util/Sparse.hs Util/Profile.
 
 .PHONY: test
 test: dist/test
-	./dist/test
+	./dist/test +RTS -K100000000000 -RTS
 
 dist/test: Util/Util.hs Util/Dense.hs Util/Random.hs Util/Sparse.hs Util/Test.hs
-	ghc --make Util/Test.hs -o dist/test
+	ghc -rtsopts --make Util/Test.hs -o dist/test
 
 .PHONY: clean
 clean:

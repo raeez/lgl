@@ -30,9 +30,9 @@ import Data.Graph.Linear.Representation.Vector as Rep
 --import Data.Graph.Linear.Representation.Array as Rep
 -- #endif
 
-import Data.Array
+import qualified Data.Array as A
 import Data.Maybe(mapMaybe)
-import Data.List
+import Data.List(sortBy)
 
 -------------------------------------------------------------------------------
 -- Internal Graph Representation
@@ -47,9 +47,11 @@ type Vertex = Int
 type Edge n = (n, n)
 
 -- | An internal-only adjacency list mapping from Vertices to neighboring vertices.
---type InternalGraph = Rep.Mapping [Vertex]
-type InternalGraph = Array Vertex [Vertex]
+type InternalGraph = A.Array Vertex [Vertex]
 
+-- | Helper function for constructing an InternalGraph from bounds + a list of edges
+buildG :: Bounds -> [Edge Vertex] -> InternalGraph
+buildG = A.accumArray (flip (:)) []
 -------------------------------------------------------------------------------
 -- External Graph Representation
 
@@ -83,29 +85,53 @@ class Ord node => GraphRepresentation node where
   data Graph node :: *
 
   -- |The empty graph.
-  empty      :: Graph node
+  empty            :: Graph node
 
   -- |Given a list of nodes, we can construct a graph.
-  mkGraph    :: [node]     -> Graph node
+  mkGraph          :: [node]     -> Graph node
 
   -- |List of nodes in this graph.
-  nodes      :: Graph node -> [node]
+  nodes            :: Graph node -> [node]
 
   -- |List of vertices in this graph.
-  vertices   :: Graph node -> [Vertex]
+  vertices         :: Graph node -> [Vertex]
 
   -- |List of edges between nodes in this graph.
-  edges      :: Graph node -> [Edge node]
+  edges            :: Graph node -> [Edge node]
 
   -- |List of edges between vertices in this graph.
-  vedges     :: Graph node -> [Edge Vertex]
+  vedges           :: Graph node -> [Edge Vertex]
 
   -- |Return the vertices adjacent to a given node in this graph.
-  adjacentTo :: Graph node -> Vertex -> [Vertex]
+  adjacentTo       :: Graph node -> Vertex -> [Vertex]
 
   -- |Return the upper and lower bounds on the vertex-numbering of this graph's
   -- representation
-  bounds     :: Graph node -> Bounds
+  bounds           :: Graph node -> Bounds
+
+  -- | The graph obtained by reversing all edges.
+  transpose        :: Graph node -> Graph node
+
+  -- | The list of edges with source/destination reversed.
+  reverseEdges         :: Graph node -> [Edge node]
+  reverseEdges g = [ (w, v) | (v, w) <- edges g ]
+
+  vreverseEdges         :: Graph node -> [Edge Vertex]
+
+  -- | A mapping of the count of edges from each vertex.
+  unsafeOutdegree :: Graph node -> (Vertex -> Int)
+
+  -- | A mapping of the count of edges from each node.
+  outdegree :: Graph node -> (node -> Maybe Int)
+
+  -- | A mapping of the  count of edges into each vertex.
+  unsafeIndegree :: Graph node -> (Vertex -> Int)
+
+  -- | A mapping of the  count of edges into each node.
+  indegree :: Graph node -> (node -> Maybe Int)
+
+  -- | Form the undirected version of the given directed graph
+  undirected   :: Graph node -> Graph node
 
 instance Ord l => GraphRepresentation (Node p l) where 
   data Graph (Node p l)    = Graph 
@@ -114,8 +140,8 @@ instance Ord l => GraphRepresentation (Node p l) where
     , grNodeMap       :: Node p l -> Maybe Vertex
     }
 
-  empty                    = Graph (array (1,0) []) (error "emptyGraph") (const Nothing)
-  mkGraph nodes            = Graph intgraph (\v -> vertex_map ! v) (\n -> key_vertex $ label n)
+  empty                    = Graph (A.array (1,0) []) (error "emptyGraph") (const Nothing)
+  mkGraph nodes            = Graph intgraph (\v -> vertex_map A.! v) (\n -> key_vertex $ label n)
     where
       max_v           = length nodes - 1
       bounds          = (0, max_v)
@@ -125,9 +151,9 @@ instance Ord l => GraphRepresentation (Node p l) where
 
       numbered_nodes  = [0..] `zip` sorted_nodes
 
-      intgraph        = array bounds [(v, mapMaybe key_vertex ks) | (v, Node _ _ ks) <- numbered_nodes]
-      key_map         = array bounds [(v, l) | (v, Node _ l _) <- numbered_nodes]
-      vertex_map      = array bounds numbered_nodes
+      intgraph        = A.array bounds [(v, mapMaybe key_vertex ks) | (v, Node _ _ ks) <- numbered_nodes]
+      key_map         = A.array bounds [(v, l) | (v, Node _ l _) <- numbered_nodes]
+      vertex_map      = A.array bounds numbered_nodes
 
 
       -- key_vertex :: label -> Maybe Vertex
@@ -136,22 +162,35 @@ instance Ord l => GraphRepresentation (Node p l) where
         where
           find a b | a > b     = Nothing
                    | otherwise = let mid = (a + b) `div` 2
-                                 in case compare k (key_map ! mid) of
+                                 in case compare k (key_map A.! mid) of
                                       LT -> find a (mid - 1)
                                       EQ -> Just mid
                                       GT -> find (mid + 1) b
 
-  nodes     (Graph g vm _) = map vm (indices g)
-  vertices  (Graph g vm _) = indices g
-  edges     (Graph g vm _) = [ (vm v, vm w) | v <- indices g, w <- g ! v ]
-  vedges    (Graph g _ _)  = [ (v, w) | v <- indices g, w <- g ! v ]
-  adjacentTo (Graph g _ _) = (!) g
-  bounds    (Graph g _ _)  = Data.Array.bounds g
+  transpose g@(Graph _ vm nm) = Graph (buildG (bounds g) (vreverseEdges g)) vm nm
+  nodes     (Graph g vm _) = map vm (A.indices g)
+  vertices  (Graph g vm _) = A.indices g
+  edges     (Graph g vm _) = [ (vm v, vm w) | v <- A.indices g, w <- g A.! v ]
+  vedges    (Graph g _ _)  = [ (v, w) | v <- A.indices g, w <- g A.! v ]
+  adjacentTo (Graph g _ _) = (A.!) g
+  bounds    (Graph g _ _)  = A.bounds g
+
+  unsafeOutdegree (Graph g vm _) = \v -> length $ successors $ vm v
+  outdegree (Graph g vm nm) = \n -> case nm n of
+                                    Nothing -> Nothing
+                                    Just v  -> Just $ length $ successors $ vm v
+  unsafeIndegree = unsafeIndegree . transpose
+  indegree    = outdegree . transpose
+
+  undirected g@(Graph _ vm nm)  = Graph g' vm nm
+    where g' = buildG (bounds g) (vedges g ++ vreverseEdges g)
+
+  vreverseEdges g@(Graph _ vm _) = [ (w, v) | (v, w) <- vedges g ]
 
 -- |Helper function for constructing graphs out of lists of tuples.
 graphFromEdgedVertices :: Ord label => [(payload, label, [label])] -> Graph (Node payload label)
 graphFromEdgedVertices = mkGraph . map nodeConstructor
 
--- |A helper function for constructing Node representations out of tuples.
+-- |A helper function for constructing a Node out of a tuple.
 nodeConstructor :: Ord l => (p, l, [l]) -> Node p l
 nodeConstructor = \(p, l, ls) -> Node p l ls
