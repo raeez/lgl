@@ -24,12 +24,6 @@ module Data.Graph.Linear.Graph
 ) 
 where
 
-{- #ifdef USE_VECTOR
-import Data.Graph.Linear.Representation.Vector as Rep
- #else-}
---import Data.Graph.Linear.Representation.Array as Rep
--- #endif
-
 import qualified Data.Array as A
 import Data.Maybe(mapMaybe)
 import Data.List(sortBy)

@@ -51,11 +51,11 @@ chop []       = return []
 chop (T.Node v ts : us)
               = do visited <- contains v
                    if visited
-                   then chop us
-                   else do include v
-                           as <- chop ts
-                           bs <- chop us
-                           return (T.Node v as : bs)
+                     then (chop us)
+                     else (do include v
+                              as <- chop ts
+                              bs <- chop us
+                              return (T.Node v as : bs))
 
 -- A monad holding a set of vertices visited so far.
 

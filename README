@@ -1,0 +1,8 @@
+The Makefile in the root directory contains some common actions:
+
+  make      - build and run the benchmark suite
+  make test - build and run the test suite
+  make prof - build and run the profiling example (Util/Profile.hs)
+
+additionally, cabal builds the haskell library+documentation:
+  cabal clean/configure/build/haddock/install 

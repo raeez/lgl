@@ -17,6 +17,7 @@ module Data.Graph.Linear.Query.SCC
   ( SCC(..)
   , stronglyConnComp, stronglyConnCompN
   , scc
+  , flattenSCCs, flattenSCC
   )
 where
 
