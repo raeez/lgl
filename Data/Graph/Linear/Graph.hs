@@ -34,7 +34,8 @@ import Data.List(sortBy)
 -- | Lower and upper bounds respectively of the domain of the graph's vertices
 type Bounds = (Int, Int)
 
--- | A single Vertex represented in an InternalGraph.
+-- | An internal representation of a vertex within a graph; used for O(1) access-time
+-- in internal-only adjacency-list representations.
 type Vertex = Int
 
 -- | A single edge between any two representations of points in a graph.
@@ -106,26 +107,27 @@ class Ord node => GraphRepresentation node where
   -- | The graph obtained by reversing all edges.
   transpose        :: Graph node -> Graph node
 
-  -- | The list of edges with source/destination reversed.
-  reverseEdges         :: Graph node -> [Edge node]
+  -- | The list of edges between nodes with source/destination reversed.
+  reverseEdges     :: Graph node -> [Edge node]
   reverseEdges g = [ (w, v) | (v, w) <- edges g ]
 
-  vreverseEdges         :: Graph node -> [Edge Vertex]
+  -- | The list of edges between vertices with source/destination reversed.
+  vreverseEdges    :: Graph node -> [Edge Vertex]
 
   -- | A mapping of the count of edges from each vertex.
-  unsafeOutdegree :: Graph node -> (Vertex -> Int)
+  vertexOutdegree  :: Graph node -> (Vertex -> Int)
 
   -- | A mapping of the count of edges from each node.
-  outdegree :: Graph node -> (node -> Maybe Int)
+  outdegree        :: Graph node -> (node -> Maybe Int)
 
   -- | A mapping of the  count of edges into each vertex.
-  unsafeIndegree :: Graph node -> (Vertex -> Int)
+  vertexIndegree   :: Graph node -> (Vertex -> Int)
 
   -- | A mapping of the  count of edges into each node.
-  indegree :: Graph node -> (node -> Maybe Int)
+  indegree         :: Graph node -> (node -> Maybe Int)
 
   -- | Form the undirected version of the given directed graph
-  undirected   :: Graph node -> Graph node
+  undirected       :: Graph node -> Graph node
 
 instance Ord l => GraphRepresentation (Node p l) where 
   data Graph (Node p l)    = Graph 
@@ -169,11 +171,11 @@ instance Ord l => GraphRepresentation (Node p l) where
   adjacentTo (Graph g _ _) = (A.!) g
   bounds    (Graph g _ _)  = A.bounds g
 
-  unsafeOutdegree (Graph g vm _) = \v -> length $ successors $ vm v
+  vertexOutdegree (Graph g vm _) = \v -> length $ successors $ vm v
   outdegree (Graph g vm nm) = \n -> case nm n of
                                     Nothing -> Nothing
                                     Just v  -> Just $ length $ successors $ vm v
-  unsafeIndegree = unsafeIndegree . transpose
+  vertexOutdegree = vertexIndegree . transpose
   indegree    = outdegree . transpose
 
   undirected g@(Graph _ vm nm)  = Graph g' vm nm
