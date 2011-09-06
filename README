@@ -1,6 +1,6 @@
 The Makefile in the root directory contains some common actions:
 
-  make      - build and run the benchmark suite
+  make      - build and run the benchmark suite; results in dist/bm.html
   make test - build and run the test suite
   make prof - build and run the profiling example (Util/Profile.hs)
 
